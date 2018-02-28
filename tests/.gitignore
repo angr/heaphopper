@@ -1,0 +1,5 @@
+*.oj
+*.bin
+*result.yaml
+*desc.yaml
+*_test.txt

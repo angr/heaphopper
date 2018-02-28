@@ -1,0 +1,1 @@
+{"allocs": [["ctrl_data_0.global_var", "malloc_sizes[0]"]], "fake_frees": ["sym_data"], "single_bitflips": [], "frees": [], "overflows": [], "arb_relative_writes": [], "reads": [["ctrl_data_0.global_var", "fill_size[0]"]], "double_frees": [], "uafs": []}

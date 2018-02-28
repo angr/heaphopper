@@ -1,0 +1,65 @@
+# Heap analysis configuration file
+
+# Use global config as base
+#global_config: ./analysis.yaml
+
+#############################
+#     zoo-gen settings      #
+#############################
+# FD for memory corruptions:
+mem_corruption_fd: 3
+# Path to shared lib implementing the c-allocator API ("default" for using the libc)
+allocator: tests/libc.so.6
+libc: tests/libc.so.6
+loader: ld-linux-x86-64.so.2
+
+
+#############################
+#    analysis settings      #
+#############################
+# Set log_level (DEBUG, INFO, ERROR)
+log_level: DEBUG
+store_desc: True
+fix_loader_problem: False
+
+#############################
+#    memory performance     #
+#############################
+# Set Memory limiter (Makes sure you don't run out of memory. Highly recommended!)
+use_mem_limiter: True
+# Set the memory limit in GB
+mem_limit: 30
+# Set spiller (spill states to disk in order to save memory)
+spiller: False
+spiller_conf: {min: 1, max: 2, staging_min: 1, staging_max: 2}
+# Specify if states should be split on allocations sizes or "ored" instead:
+state_split_sizes: False
+# Drop errored states (e.g. SegFaults)
+drop_errored: True
+
+
+#############################
+#    solver performance     #
+#############################
+# Set DFS (depth-first explorations)
+use_dfs: True
+# Set VSA (value-set analysis)
+use_vsa: False
+# Set Veritesting (DSE+SSE)
+use_veritesting: False
+# Set Memory limiter (Makes sure you don't run out of memory. Highly recommended!)
+use_mem_limiter: True
+# Stop exploration as soon as a vuln state is found. Do not explore the whole space!
+stop_found: True
+# Stop found for fake_frees, exploration is pretty expensive on those
+filter_fake_frees: False
+# Set Concretizer (Tries to concretize symbolic values asap)
+use_concretizer: False
+
+#############################
+#    pocs-gen settings      #
+#############################
+# Define where to store the proof-of-concept c-files
+pocs_path: tests/pocs
+# Results may contain symbolic values which allow for multiple solutions, specify how many solutions you want to get
+num_results: 1
