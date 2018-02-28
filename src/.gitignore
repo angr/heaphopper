@@ -1,0 +1,3 @@
+*.pyc
+*.o
+heaphopper/analysis/identify_bins/identify

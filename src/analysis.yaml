@@ -1,0 +1,141 @@
+# Heap analysis configuration file
+
+# Use global config as base
+#global_config: ./analysis.yaml
+
+#############################
+#     zoo-gen settings      #
+#############################
+# Create files ?
+create_files: True
+# Specify the write_target's size in qwords (controlled memory where you want to write to for arb. write)
+wtarget_size: 4
+# Symbolic bytes in sim_data used for fake_free, etc... (default: 0x20)
+sym_data_size: 0x20
+# FD for memory corruptions:
+mem_corruption_fd: 3
+# Specify the number of actions in one zoo case
+zoo_depth: 7
+# Specify the zoo actions out of (malloc, free, overflow, uaf, fake_free, double_free, single_bitflip, arb_relative_write)
+# Syntax: action:count (count sets the max. occurrences of the action per binary, -1 means zoo_depth)
+#zoo_actions: {malloc: -1, free: -1, overflow: -1, fake_free: -1, double_free: -1, arb_relative_write: -1, single_bitflip: -1}
+zoo_actions: {malloc: -1, free: -1, overflow: -1, double_free: -1, fake_free: -1}
+#zoo_actions: {malloc: -1, free: -1, uaf: -1}
+# Specify the location to store your zoo
+#zoo_dir: /heaps-of-fun/zoo_dir/
+zoo_dir: /tmp/zoo_dir2
+# Enable additional malloc hardening for glibc (disable, enable, pedantic)
+mcheck: disable
+# Path to shared lib implementing the c-allocator API ("default" for using the libc)
+#allocator: ./libc.so.6
+#allocator: ../evaluation/musl/libc.so
+#allocator: ../evaluation/ptmalloc/libc.so.6
+#allocator: ../evaluation/ptmalloc_latest/libc.so.6
+#allocator: ../evaluation/musl/libc.so
+#allocator: /home/mo/src/heaps-of-fun/evaluation/tcache_case_study/tcache_on/libc.so.6
+#allocator: ../evaluation/dlmalloc_original/libdlmalloc.so
+#allocator: ../evaluation/dlmalloc_latest/libdlmalloc.so
+#allocator: ../evaluation/tcache_case_study/tcache_off/libc.so.6
+allocator: ../evaluation/tcache_case_study/tcache_on/libc.so.6
+#allocator: /home/mo/src/heaps-of-fun/dlmalloc/lib/libdlmalloc.so
+#allocator: /home/mo/src/heaps-of-fun/jemalloc/obj/lib/libjemalloc.so.2
+#allocator: /home/mo/src/heaps-of-fun/FreeGuard/libfreeguard.so
+#allocator: /home/mo/src/heaps-of-fun/Malloc-Implementations/allocators/phkmalloc/libphk.so
+#allocator: /home/mo/src/heaps-of-fun/openbsd-malloc/libobsdmalloc.so.1
+#libc: ./libc.so.6
+#libc: ../evaluation/ptmalloc/libc.so.6
+libc: ../evaluation/tcache_case_study/tcache_on/libc.so.6
+#libc: ../evaluation/ptmalloc_latest/libc.so.6
+#allocator: ../evaluation/dlmalloc_latest/libdlmalloc.so
+#libc: ../evaluation/musl/libc.so
+#libc: /home/mo/src/heaps-of-fun/evaluation/tcache_case_study/tcache_on/libc.so.6
+#loader: /home/mo/src/heaps-of-fun/evaluation/tcache_case_study/tcache_on/ld-linux-x86-64.so.2
+loader: ld-linux-x86-64.so.2
+#loader: ../evaluation/musl/ld-musl-x86-64.so.2
+
+
+#############################
+#    analysis settings      #
+#############################
+# Specify the distinct malloc sizes; run identify_libc to identify the libc-binsizes
+#malloc_sizes: [120, 472, 984]
+#malloc_sizes: [20, 200, 2000]
+malloc_sizes: [20, 200, 2000]
+#malloc_sizes: [0x80, 0x100, 0x200]
+#malloc_sizes: [0x78, 0x3d8]
+# Specify the overflow sizes starting from prev_size
+#overflow_sizes: [8, 9, 17]
+overflow_sizes: [9, 12]
+# Specify stdin should be pre-constrained
+input_pre_constraint: False
+# Specify stdin value-range (any, ascii, printable, alphanumeric, letters, zero-bytes)
+input_values: any
+# Specify a chunk's header size
+header_size: 32
+# Specify the offset between the user's memory and the start of the chunk
+mem2chunk_offset: 16
+# Chunk fill size (number of byte read into each chunk when allocated): zero, header_size, chunk_size, <numeric value in bytes>
+chunk_fill_size: zero
+# Set log_level (DEBUG, INFO, ERROR)
+log_level: DEBUG
+# Specify vulnerabilities to detect: arbitrary write, allocations over already allocated memory, allocations over non-
+# heap-memory, freeing of fake chunks
+# vulns: [arb_write, overlap_alloc, bad_alloc, bad_free]
+vulns: [arb_write, overlap_alloc, bad_alloc]
+store_desc: True
+fix_loader_problem: True
+
+#############################
+#    memory performance     #
+#############################
+# Set Memory limiter (Makes sure you don't run out of memory. Highly recommended!)
+use_mem_limiter: True
+# Set the memory limit in GB
+mem_limit: 30
+# Set spiller (spill states to disk in order to save memory)
+spiller: False
+spiller_conf: {min: 1, max: 2, staging_min: 1, staging_max: 2}
+# Specify if states should be split on allocations sizes or "ored" instead:
+state_split_sizes: False
+# Drop errored states (e.g. SegFaults)
+drop_errored: True
+
+
+#############################
+#    solver performance     #
+#############################
+# Set DFS (depth-first explorations)
+use_dfs: True
+# Set VSA (value-set analysis)
+use_vsa: False
+# Set Veritesting (DSE+SSE)
+use_veritesting: False
+# Stop exploration as soon as a vuln state is found. Do not explore the whole space!
+stop_found: False
+# Stop found for fake_frees, exploration is pretty expensive on those
+filter_fake_frees: True
+# Set Concretizer (Tries to concretize symbolic values asap)
+use_concretizer: False
+
+#############################
+#    pocs-gen settings      #
+#############################
+# Define where to store the proof-of-concept c-files
+#pocs_path: ./pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/musl/poc_uaf
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/ptmalloc_latest/pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/ptmalloc_latest/pocs_uaf
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/musl/pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/musl/pocs_uaf
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/ptmalloc/pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/ptmalloc/pocs_uaf
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/ptmalloc/write_pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/tcache_case_study/tcache_on/pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/dlmalloc_original/pocs_uaf
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/dlmalloc_latest/pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/dlmalloc_latest/pocs_uaf
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/tcache_case_study/tcache_off/pocs
+pocs_path: /home/mo/src/heaps-of-fun/evaluation/tcache_case_study/tcache_on/pocs
+#pocs_path: /home/mo/src/heaps-of-fun/evaluation/dlmalloc_original/pocs_uaf
+# Results may contain symbolic values which allow for multiple solutions, specify how many solutions you want to get
+num_results: 1
