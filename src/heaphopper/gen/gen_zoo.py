@@ -110,9 +110,9 @@ def ctrled_data(count):
     return '\n'.join(cdata)
 
 
-def symbolic_data(fake_free):
+def symbolic_data(has_fake_free):
     data = ''
-    if fake_free:
+    if has_fake_free:
         data = '\n'.join([
             'symbolic_data __attribute__((aligned(16))) sym_data;'
         ])
@@ -506,7 +506,7 @@ def write_files(config, variants):
     if not path.isdir(config['zoo_dir']):
         mkdir(config['zoo_dir'])
 
-    for i, variant in enumerate(variants):
+    for i, v in enumerate(variants):
         file_name = "{}".format(str(i).rjust(id_len, '0'))
         with open('{}/{}.c'.format(config['zoo_dir'], file_name), 'w') as f:
             content = '\n'.join([
@@ -518,13 +518,13 @@ def write_files(config, variants):
                 offset(),
                 header_size(),
                 mem2chunk_offset(),
-                malloc_sizes(variant[1]),
-                fill_sizes(variant[1]),
-                overflow_sizes(variant[2]['overflow_cnt']),
-                arb_write_offsets(variant[2]['arb_write_cnt']),
-                bitflip_offsets(variant[2]['bitflip_cnt']),
-                ctrled_data(variant[1]),
-                symbolic_data(variant[2]['freed_fake']),
+                malloc_sizes(v[1]),
+                fill_sizes(v[1]),
+                overflow_sizes(v[2]['overflow_cnt']),
+                arb_write_offsets(v[2]['arb_write_cnt']),
+                bitflip_offsets(v[2]['bitflip_cnt']),
+                ctrled_data(v[1]),
+                symbolic_data(v[2]['freed_fake']),
                 main_start(),
             ])
 
@@ -535,7 +535,7 @@ def write_files(config, variants):
 
             content += '\n'.join([
                 heap_setup(),
-                '\n'.join(variant[0]),
+                '\n'.join(v[0]),
                 main_end()
             ])
             f.write(content)

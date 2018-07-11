@@ -4,6 +4,7 @@ from ..utils.input import check_input
 
 logger = logging.getLogger('VulnChecker')
 
+
 class VulnChecker(angr.exploration_techniques.ExplorationTechnique):
     def __init__(self, fd, pre_constraint, stdin_values, stop_found, filter_fake_free):
         super(VulnChecker, self).__init__()

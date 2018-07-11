@@ -1,3 +1,7 @@
+pyelftools
+cle
+ana
+claripy
 angr
 pyyaml
 psutil

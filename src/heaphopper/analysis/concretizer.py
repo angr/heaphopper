@@ -9,12 +9,12 @@ class Concretizer(angr.exploration_techniques.ExplorationTechnique):
         super(Concretizer, self).__init__()
         self.addrs = addrs
 
-    def step(self, sm, stash, **kwargs):
+    def step(self, simgr, stash, **kwargs):
         for addr in self.addrs:
-            for s in sm.active:
-                var = s.memory.load(addr, s.arch.bits//s.arch.byte_width, endness="Iend_LE")
+            for s in simgr.active:
+                var = s.memory.load(addr, s.arch.bits // s.arch.byte_width, endness="Iend_LE")
                 if not var.symbolic:
-                    return sm.step(stash=stash)
+                    return simgr.step(stash=stash)
 
                 vals = s.solver.eval_upto(var, 2)
                 if len(vals) == 1:
@@ -22,6 +22,4 @@ class Concretizer(angr.exploration_techniques.ExplorationTechnique):
                     s.memory.store(addr, new_var, endness="Iend_LE")
                     logger.info('Concretized {} @ {} to {}'.format(var, hex(addr), hex(vals[0])))
 
-
-        return sm.step(stash=stash)
-
+        return simgr.step(stash=stash)

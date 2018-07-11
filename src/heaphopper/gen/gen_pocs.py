@@ -1,6 +1,5 @@
 #!/usr/bin/env python2
 import re
-import sys
 from hashlib import md5
 from math import log, ceil
 
@@ -164,6 +163,7 @@ def get_last_line(last_line, src_file):
 
 
 def gen_poc(result, src_file, bin_file, last_line):
+    global last_action_size, space
     with open('{}'.format(src_file), 'r') as f:
         lines = f.read().split('\n')
 
@@ -501,7 +501,7 @@ def gen_poc(result, src_file, bin_file, last_line):
         for idx, val in enumerate(vals):
             content.append('\twrite_target[{}] = (uint64_t) {};'.format(idx, val))
 
-        if last_action_size == 0:
+        if 0 == last_action_size:
             last_action_size = 1
         poc.insert(-last_action_size, '\n'.join(content))
         poc.insert(-last_action_size, '{}#if print\n{}\tfor (int i = 0; i < 4; i++) {{'.format(space, space))

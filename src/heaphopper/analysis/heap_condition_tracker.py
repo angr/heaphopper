@@ -1,4 +1,4 @@
-from angr import SimProcedure, SimUnsatError
+from angr import SimProcedure
 from angr.state_plugins import SimStatePlugin, inspect
 import claripy
 import logging
@@ -7,10 +7,13 @@ logger = logging.getLogger('HeapConditionTracker')
 
 
 class HeapConditionTracker(SimStatePlugin):
+    def widen(self, _others):
+        pass
+
     def __init__(self, config=None, libc=None, allocator=None, initialized=0, vulnerable=False, vuln_state=None,
                  vuln_type='', malloc_dict=None, free_dict=None, write_bp=None, wtarget=None,
                  req_size=None, arb_write_info=None, double_free=None, fake_frees=None, stack_trace=None,
-                 ctrl_data_idx=0, **kwargs):
+                 ctrl_data_idx=0):
         super(HeapConditionTracker, self).__init__()
         self.config = config
         self.libc = libc
@@ -29,14 +32,14 @@ class HeapConditionTracker(SimStatePlugin):
         self.arb_write_info = dict() if arb_write_info is None else dict(arb_write_info)
         # Stack-trace of arb-write
         self.stack_trace = list() if stack_trace is None else list(stack_trace)
-        # Counter for malloc dsts
+        # Counter for malloc dests
         self.ctrl_data_idx = ctrl_data_idx
 
-    def copy(self):
-        return HeapConditionTracker(**self.__dict__)
+    def copy(self, **kwargs):
+        return HeapConditionTracker()
 
     def set_state(self, s, **kwargs):
-        super(HeapConditionTracker, self).set_state(s, **kwargs)
+        super(HeapConditionTracker, self).set_state(s)
 
     # we need that for veritesting
     def merge(self, others, merge_conditions, common_ancestor=None):
@@ -85,6 +88,7 @@ class HeapConditionTracker(SimStatePlugin):
 
             return True
 
+
 class MallocInspect(SimProcedure):
     IS_FUNCTION = True
     local_vars = ()
@@ -92,11 +96,11 @@ class MallocInspect(SimProcedure):
     def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None):
         if 'arb_write' in vulns:
             self.state.heap.write_bp = self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                                             action=check_write)
+                                                            action=check_write)
         self.state.heap.req_size = size
         self.call(malloc_addr, (size,), 'check_malloc')
 
-    def check_malloc(self, size, malloc_addr=None, vulns=None, ctrl_data=None):
+    def check_malloc(self, vulns=None, ctrl_data=None):
         # Don't track heap_init malloc
         if self.state.heap.initialized == 0:
             self.state.heap.initialized = 1
@@ -121,7 +125,6 @@ class MallocInspect(SimProcedure):
         sols = self.state.solver.eval_upto(addr, 2)
         if len(sols) > 1:
             return self.check_sym_malloc(addr, vulns, dict_key)
-
 
         # Get min val
         val = sols[0]
@@ -174,7 +177,7 @@ class MallocInspect(SimProcedure):
 
         # This improves speed significantly, nobody knows why... some magic caching probably
         size_vals = self.state.solver.eval_upto(self.state.heap.req_size, 16)
-        # Let's use the value for smth useful, if we solve anyways
+        # Let's use the value for smth. useful, if we solve anyways
         if len(size_vals) == 1:
             self.state.add_constraints(self.state.heap.req_size == size_vals[0])
 
@@ -206,7 +209,6 @@ class MallocInspect(SimProcedure):
                 self.state.heap.vuln_state = self.state.copy()
 
 
-
 class FreeInspect(SimProcedure):
     IS_FUNCTION = True
 
@@ -230,10 +232,10 @@ class FreeInspect(SimProcedure):
 
         if 'arb_write' in vulns:
             self.state.heap.write_bp = self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                                             action=check_write)
+                                                            action=check_write)
         self.call(free_addr, [ptr], 'check_free')
 
-    def check_free(self, ptr, free_addr=None, vulns=None, sym_data=None):
+    def check_free(self, ptr, vulns=None):
         # Don't track heap_init free
         if self.state.heap.initialized == 1:
             self.state.heap.initialized = 2

@@ -13,7 +13,7 @@ wtarget_size: 4
 # Symbolic bytes in sim_data used for fake_free, etc... (default: 0x40)
 sym_data_size: 0x0
 # Specify the number of actions in one zoo case
-zoo_depth: 10
+zoo_depth: 8
 # Specify the zoo actions out of (malloc, free, overflow, uaf, fake_free, double_free, single_bitflip, arb_relative_write)
 zoo_actions: {malloc: -1, free: -1, uaf: 1}
 # Specify the location to store your zoo
@@ -37,8 +37,6 @@ input_values: any
 header_size: 8
 # Specify the offset between the user's memory and the start of the chunk
 mem2chunk_offset: 16
-# Specify the offset between the user's memory and the chunk's size (only used to detect overlapping chunks right now)
-mem2size_offset: 8
 # Chunk fill size (number of byte read into each chunk when allocated): zero, header_size, chunk_size, <numeric value in bytes>
 chunk_fill_size: zero
 # Specify vulnerabilities to detect: arbitrary write, allocations over already allocated memory, allocations over non-

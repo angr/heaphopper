@@ -13,7 +13,7 @@ wtarget_size: 4
 # Symbolic bytes in sim_data used for fake_free, etc... (default: 0x40)
 sym_data_size: 0x0
 # Specify the number of actions in one zoo case
-zoo_depth: 10
+zoo_depth: 8
 # Specify the zoo actions out of (malloc, free, overflow, uaf, fake_free, double_free, single_bitflip, arb_relative_write)
 zoo_actions: {malloc: -1, free: -1, overflow: 1}
 # Specify the location to store your zoo

@@ -121,7 +121,7 @@ def get_win_addr(proj, addr_trace):
                 heap_func = proj.loader.main_object.reverse_plt[addr]
         elif heap_func:
             # last main_object addr has to be right before heap_func call
-            raise
+            raise Exception("Couldn't find win addr")
 
 
 '''
@@ -564,10 +564,10 @@ def trace(config_name, binary_name):
     return len(found_paths)
 
 
-def store_vuln_descs(file, paths, var_dict, arb_writes):
+def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
     global DESC_HEADER, DESC_SECTION_LINE
-    logger.info('Creating vuln descriptions'.format(file))
-    with open('{}.desc'.format(file.split('.')[0]), 'r') as f:
+    logger.info('Creating vuln descriptions'.format(desc_file))
+    with open('{}.desc'.format(desc_file.split('.')[0]), 'r') as f:
         bin_info = yaml.load(f)
     '''
     bin_info['allocs'] -> list of (dst_symbol, size_symbol)
@@ -584,7 +584,7 @@ def store_vuln_descs(file, paths, var_dict, arb_writes):
     for path_num, path in enumerate(paths):
         state = path.state
         desc = []
-        desc.append('{} {}'.format(DESC_HEADER, file))
+        desc.append('{} {}'.format(DESC_HEADER, desc_file))
         desc.append('CONSTRAINTS:')
         desc.append(DESC_SECTION_LINE)
         desc.append('\t- {} allocations:'.format(len(bin_info['allocs'])))
@@ -671,8 +671,8 @@ def store_vuln_descs(file, paths, var_dict, arb_writes):
                                                                                           arb_write['val']))
         descs.append('\n'.join(desc))
 
-    desc_dict = {'file': file, 'text': descs}
-    with open("{}-desc.yaml".format(file), 'w') as f:
+    desc_dict = {'file': desc_file, 'text': descs}
+    with open("{}-desc.yaml".format(desc_file), 'w') as f:
         yaml.dump(desc_dict, f)
 
 

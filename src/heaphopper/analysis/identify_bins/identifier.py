@@ -21,17 +21,19 @@ def use_sim_procedure(name):
         return True
 
 
-def identify(config_file, libc_name):
+def identify(config_file):
     config = parse_config(config_file)
     logger.setLevel(config['log_level'])
     logger.info('Identifying libc...')
 
+    libc_path = os.path.expanduser(config['libc'])
+    libc_name = os.path.basename(libc_path)
     libc_hash = hashlib.md5(open(libc_name, 'rb').read()).hexdigest()
     logger.debug('md5(libc) == {}'.format(libc_hash))
 
     bins_file = '{}.bin_sizes'.format(libc_hash)
     if not os.path.isfile(bins_file):
-        bins = identify_bins(libc_name, config)
+        bins = identify_bins(config)
         with open(bins_file, 'w') as f:
             for cbin in bins:
                 f.write('{} - {}\n'.format(cbin[0], cbin[1]))
@@ -68,8 +70,7 @@ def identify_bins(config):
     added_options.add(angr.options.CONSTRAINT_TRACKING_IN_SOLVER)
     added_options.add(angr.options.STRICT_PAGE_ACCESS)
     state = proj.factory.full_init_state(add_options=added_options, remove_options=angr.options.simplification)
-    state.register_plugin('heap', HeapConditionTracker(write_target_addr=None,
-                                                                       write_target_size=None))
+    state.register_plugin('heap', HeapConditionTracker())
     # fix_loader_problem(proj, state)
 
     malloc_sizes = proj.loader.main_object.get_symbol('malloc_sizes')
@@ -83,7 +84,7 @@ def identify_bins(config):
         states.append(s)
 
     sm = proj.factory.simgr(thing=states, immutable=False)
-    sm.use_technique(MemLimiter(config['mem_limit']))
+    sm.use_technique(MemLimiter(config['mem_limit'], config['drop_errored']))
 
     debug = False
     stop = False
