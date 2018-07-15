@@ -495,13 +495,13 @@ def trace(config_name, binary_name):
     name = 'memory_corruption'
     backing = SimSymbolicMemory(memory_id='file_%s' % name)
     backing.set_state(state)
-    f = SimFile(name, Flags.O_RDONLY)
+    f = SimFile(name, writable=False)
     f.set_state(state)
     mem_corr_fd = config['mem_corruption_fd']
-    if mem_corr_fd in state.posix.files:
+    if mem_corr_fd in state.posix.fd:
         raise Exception("Overflow fd already exists.")
-    state.posix.files[mem_corr_fd] = f
-    state.posix.fs[name] = f
+    state.posix.fd[mem_corr_fd] = f
+    #state.posix.fs[name] = f
 
     # constrain input
     if config['input_pre_constraint']:
