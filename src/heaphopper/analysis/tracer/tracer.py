@@ -700,7 +700,8 @@ def store_results(num_results, bin_file, paths, var_dict, fd):
         result['header_sizes'] = []
         result['overflow_sizes'] = []
         result['write_targets'] = []
-        result['mem2chunk_offset'] = path.state.solver.eval(var_dict['mem2chunk_addr'])
+        result['mem2chunk_offset'] = path.state.solver.eval(path.state.memory.load(var_dict['mem2chunk_addr'], 8,
+                                                                                   endness='Iend_LE'))
         result['stack_trace'] = path.state.heap.stack_trace
         result['last_line'] = path.state.heap.last_line
         result['heap_base'] = path.state.libc.heap_location
