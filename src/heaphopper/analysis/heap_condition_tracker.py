@@ -35,7 +35,8 @@ class HeapConditionTracker(SimStatePlugin):
         # Counter for malloc dests
         self.ctrl_data_idx = ctrl_data_idx
 
-    def copy(self, **kwargs):
+    @SimStatePlugin.memo
+    def copy(self, _memo):
         return HeapConditionTracker()
 
     def set_state(self, s, **kwargs):
