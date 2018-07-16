@@ -528,7 +528,7 @@ def trace(config_name, binary_name):
             arw_bytes = 0
 
         num_bytes = overflow_bytes + uaf_bytes + arw_bytes
-        input_bytes = state.posix.fd[mem_corr_fd].read_from(num_bytes).chop(8)
+        input_bytes = state.posix.fd[mem_corr_fd].read_data(num_bytes)[0].chop(8)
         state.posix.fd[mem_corr_fd].seek(0)
         constrain_input(state, input_bytes, config['input_values'])
 
