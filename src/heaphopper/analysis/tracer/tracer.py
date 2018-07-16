@@ -19,7 +19,7 @@ from ..heap_condition_tracker import HeapConditionTracker, MallocInspect, FreeIn
 from ..mem_limiter import MemLimiter
 from ..vuln_checker import VulnChecker
 from ..concretizer import Concretizer
-from ...utils.angr_tools import heardEnter
+from ...utils.angr_tools import heardEnter, all_bytes
 from ...utils.parse_config import parse_config
 from ...utils.input import constrain_input
 
@@ -131,16 +131,20 @@ Post processing states
 
 def process_state(num_results, state, write_state, var_dict, fd):
     processed_states = []
-    input_opts = state.solver.eval_upto(state.posix.files[fd].all_bytes(), num_results, cast_to=str)
+    input_opts = state.solver.eval_upto(all_bytes(state.posix.fd[fd].read_storage), num_results, cast_to=str)
     for input_opt in input_opts:
         s = state.copy()
         write_s = write_state.copy()
-        s.add_constraints(s.posix.files[fd].all_bytes() == input_opt)
-        write_s.add_constraints(write_s.posix.files[fd].all_bytes() == input_opt)
+        s.add_constraints(all_bytes(s.posix.fd[fd].read_storage) == input_opt)
+        write_s.add_constraints(all_bytes(write_s.posix.fd[fd].read_storage) == input_opt)
 
-        stdin_opt = state.solver.eval(state.posix.files[0].all_bytes(), cast_to=str)
-        s.add_constraints(s.posix.files[0].all_bytes() == stdin_opt)
-        write_s.add_constraints(write_s.posix.files[0].all_bytes() == stdin_opt)
+        stdin_bytes = all_bytes(state.posix.fd[0].read_storage)
+        if stdin_bytes:
+            stdin_opt = state.solver.eval(stdin_bytes, cast_to=str)
+            s.add_constraints(all_bytes(s.posix.fd[0].read_storage) == stdin_opt)
+            write_s.add_constraints(all_bytes(write_s.posix.fd[0].read_storage) == stdin_opt)
+        else:
+            stdin_opt = []
 
         svars = []
         for svar in var_dict['sdata_addrs']:
@@ -493,14 +497,17 @@ def trace(config_name, binary_name):
 
     # Create fd for memory corruption input
     name = 'memory_corruption'
-    backing = SimSymbolicMemory(memory_id='file_%s' % name)
-    backing.set_state(state)
+    path = '/tmp/%s' % name
+    mem_corr_fd = config['mem_corruption_fd']
+    # backing = SimSymbolicMemory(memory_id='file_%s' % name)
+    # backing.set_state(state)
     f = SimFile(name, writable=False)
     f.set_state(state)
-    mem_corr_fd = config['mem_corruption_fd']
-    if mem_corr_fd in state.posix.fd:
+    state.fs.insert(path, f)
+    real_fd = state.posix.open(path, flags=Flags.O_RDONLY, preferred_fd=mem_corr_fd)
+    if mem_corr_fd != real_fd:
         raise Exception("Overflow fd already exists.")
-    state.posix.fd[mem_corr_fd] = f
+    #state.posix.fd[mem_corr_fd] = f
     #state.posix.fs[name] = f
 
     # constrain input
@@ -521,8 +528,8 @@ def trace(config_name, binary_name):
             arw_bytes = 0
 
         num_bytes = overflow_bytes + uaf_bytes + arw_bytes
-        input_bytes = state.posix.files[mem_corr_fd].read_from(num_bytes).chop(8)
-        state.posix.files[mem_corr_fd].seek(0)
+        input_bytes = state.posix.fd[mem_corr_fd].read_from(num_bytes).chop(8)
+        state.posix.fd[mem_corr_fd].seek(0)
         constrain_input(state, input_bytes, config['input_values'])
 
     # Manual inspection loop
@@ -621,7 +628,7 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
             desc.append('\t\t* use-after-free of {} with size of {}'.format(dst, size))
         # check controlled_data
         desc.append('\t- controlled_data:')
-        stdin = state.posix.files[0].all_bytes()
+        stdin = all_bytes(state.posix.fd[0].read_storage)
         constraint_vars = map(lambda c: list(c.variables), state.solver.constraints)
         i = 0
         for read, fill_size in zip(bin_info['reads'], var_dict['fill_size_vars']):

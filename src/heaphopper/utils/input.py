@@ -23,7 +23,7 @@ def check_input(state, values, fd):
         sys.exit(-1)
 
 
-    stdin = state.posix.files[fd].all_bytes().chop(8)
+    stdin = state.posix.get_fd(fd).all_bytes().chop(8)
     constraints = claripy.And()
     for c in stdin:
         constraint = claripy.And()

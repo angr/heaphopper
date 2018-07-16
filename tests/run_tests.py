@@ -26,7 +26,7 @@ def run_single(folder_name, analysis_name, binary_name):
     start = time.time()
     call(['python', 'src/check_heap.py', 'trace', '-c', 'tests/{}/{}'.format(folder_name, analysis_name),
           '-b', 'tests/{}/{}'.format(folder_name, binary_name)], cwd='../', stdout=DEVNULL, stderr=STDOUT)
-    #print check_output(['python', 'check_heap.py', 'trace', '-c', 'tests/{}/{}'.format(folder_name, analysis_name),
+    # print check_output(['python', 'src/check_heap.py', 'trace', '-c', 'tests/{}/{}'.format(folder_name, analysis_name),
     #      '-b', 'tests/{}/{}'.format(folder_name, binary_name)], cwd='../')
     ts = time.time() - start
     return ts
