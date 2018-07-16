@@ -101,7 +101,7 @@ class MallocInspect(SimProcedure):
         self.state.heap.req_size = size
         self.call(malloc_addr, (size,), 'check_malloc')
 
-    def check_malloc(self, vulns=None, ctrl_data=None):
+    def check_malloc(self, size, malloc_addr, vulns=None, ctrl_data=None): #pylint:disable=unused-argument
         # Don't track heap_init malloc
         if self.state.heap.initialized == 0:
             self.state.heap.initialized = 1
@@ -236,7 +236,7 @@ class FreeInspect(SimProcedure):
                                                             action=check_write)
         self.call(free_addr, [ptr], 'check_free')
 
-    def check_free(self, ptr, vulns=None):
+    def check_free(self, ptr, free_addr, vulns=None, sym_data=None): #pylint:disable=unused-argument
         # Don't track heap_init free
         if self.state.heap.initialized == 1:
             self.state.heap.initialized = 2
