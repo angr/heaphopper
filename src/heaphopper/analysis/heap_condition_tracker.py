@@ -13,7 +13,7 @@ class HeapConditionTracker(SimStatePlugin):
     def __init__(self, config=None, libc=None, allocator=None, initialized=0, vulnerable=False, vuln_state=None,
                  vuln_type='', malloc_dict=None, free_dict=None, write_bp=None, wtarget=None,
                  req_size=None, arb_write_info=None, double_free=None, fake_frees=None, stack_trace=None,
-                 ctrl_data_idx=0):
+                 ctrl_data_idx=0, **kwargs):
         super(HeapConditionTracker, self).__init__()
         self.config = config
         self.libc = libc
@@ -37,10 +37,10 @@ class HeapConditionTracker(SimStatePlugin):
 
     @SimStatePlugin.memo
     def copy(self, _memo):
-        return HeapConditionTracker()
+        return HeapConditionTracker(**self.__dict__)
 
     def set_state(self, s, **kwargs):
-        super(HeapConditionTracker, self).set_state(s)
+        super(HeapConditionTracker, self).set_state(s, **kwargs)
 
     # we need that for veritesting
     def merge(self, others, merge_conditions, common_ancestor=None):
@@ -268,6 +268,8 @@ class FreeInspect(SimProcedure):
             logger.info('Found arbitrary write')
             self.state.heap.vulnerable = True
             self.state.heap.vuln_type = 'arbitrary_write_free'
+
+        return
 
 
 def check_write(state):
