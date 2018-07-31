@@ -140,19 +140,36 @@ def process_state(num_results, state, write_state, var_dict, fd):
 
         stdin_bytes = all_bytes(state.posix.fd[0].read_storage)
         if stdin_bytes:
-            stdin_opt = state.solver.eval(stdin_bytes, cast_to=str)
-            s.add_constraints(all_bytes(s.posix.fd[0].read_storage) == stdin_opt)
-            write_s.add_constraints(all_bytes(write_s.posix.fd[0].read_storage) == stdin_opt)
+            stdin_bytes = map(lambda b: b[0], stdin_bytes)
+            stdin_stream = stdin_bytes[0]
+            for b in stdin_bytes[1:]:
+                stdin_stream = stdin_stream.concat(b)
+            stdin_opt = state.solver.eval(stdin_stream, cast_to=str)
+            s.add_constraints(stdin_stream == stdin_opt)
+            write_s.add_constraints(stdin_stream == stdin_opt)
         else:
             stdin_opt = []
 
         svars = []
+        # check if we have a saved-state for the sym_data memory
+        if 'sym_data_ptr' in var_dict and s.heap.sym_data_states[var_dict['sym_data_ptr']]:
+            sym_s = s.heap.sym_data_states[var_dict['sym_data_ptr']].copy()
+            sym_s.add_constraints(all_bytes(sym_s.posix.fd[fd].read_storage) == input_opt)
+            if stdin_opt:
+                sym_s.add_constraints(stdin_stream == stdin_opt)
+        else:
+            sym_s = s
         for svar in var_dict['sdata_addrs']:
-            smem = s.memory.load(svar, 8, endness='Iend_LE')
-            sol = s.solver.min(smem)
+            smem_orig = sym_s.memory.load(svar, 8, endness='Iend_LE')
+            smem_final = s.memory.load(svar, 8, endness='Iend_LE')
+            # If the symbolic variable was overwritten, use the orig one
+            if smem_orig is not smem_final:
+                sol = sym_s.solver.min(smem_orig)
+                sym_s.add_constraints(smem_orig == sol)
+            else:
+                sol = s.solver.min(smem_final)
+                s.add_constraints(smem_final == sol)
             svars.append(sol)
-            s.add_constraints(smem == sol)
-            write_s.add_constraints(smem == sol)
 
         header_var = s.memory.load(var_dict['header_size_addr'], 8, endness="Iend_LE")
         header = s.solver.min(header_var)
@@ -251,6 +268,12 @@ def setup_state(state, proj, config):
         var_dict['global_vars'].append(cdata.rebased_addr)
         var_dict['allocs'].append(cdata.rebased_addr)
 
+    # Set mem2chunk offset
+    mem2chunk_var = proj.loader.main_object.get_symbol('mem2chunk_offset')
+    var_dict['mem2chunk_addr'] = mem2chunk_var.rebased_addr
+    mem2chunk = state.solver.BVV(value=config['mem2chunk_offset'], size=8 * 8)
+    state.memory.store(var_dict['mem2chunk_addr'], mem2chunk, 8, endness='Iend_LE')
+
     # Inject symbolic data into memory that can't be resolved
     var_dict['sdata_addrs'] = []
     sdata_var = proj.loader.main_object.get_symbol('sym_data')
@@ -260,6 +283,12 @@ def setup_state(state, proj, config):
             smem_elem = state.solver.BVS('smem', 8 * 8)
             state.memory.store(sdata_var.rebased_addr + i, smem_elem, 8, endness='Iend_LE')
             var_dict['sdata_addrs'].append(sdata_var.rebased_addr + i)
+
+        # create entry in sym_data state storage
+        var_dict['sym_data_ptr'] = sdata_var.rebased_addr + config['mem2chunk_offset']
+        state.heap.sym_data_states[var_dict['sym_data_ptr']] = None
+        # add sym_data_size to heap state
+        state.heap.sym_data_size = config['sym_data_size']
         # add global_ptr to global_vars:
         var_dict['global_vars'].append(sdata_var.rebased_addr)
 
@@ -278,11 +307,6 @@ def setup_state(state, proj, config):
     header_size = state.solver.BVV(value=config['header_size'], size=8 * 8)
     state.memory.store(var_dict['header_size_addr'], header_size, 8, endness='Iend_LE')
 
-    # Set mem2chunk offset
-    mem2chunk_var = proj.loader.main_object.get_symbol('mem2chunk_offset')
-    var_dict['mem2chunk_addr'] = mem2chunk_var.rebased_addr
-    mem2chunk = state.solver.BVV(value=config['mem2chunk_offset'], size=8 * 8)
-    state.memory.store(var_dict['mem2chunk_addr'], mem2chunk, 8, endness='Iend_LE')
 
     # Set malloc sizes
     malloc_size_var = proj.loader.main_object.get_symbol('malloc_sizes')
@@ -418,8 +442,8 @@ def trace(config_name, binary_name):
     added_options.add(angr.options.CONCRETIZE_SYMBOLIC_FILE_READ_SIZES)
     if config['use_vsa']:
         added_options.add(angr.options.APPROXIMATE_SATISFIABILITY)  # vsa for satisfiability
-        added_options.add(angr.options.APPROXIMATE_GUARDS)  # vsa for guards
-        added_options.add(angr.options.APPROXIMATE_MEMORY_SIZES)  # vsa for mem_sizes
+        added_options.add(angr.options.APPROXIMATE_GUARDS)          # vsa for guards
+        added_options.add(angr.options.APPROXIMATE_MEMORY_SIZES)    # vsa for mem_sizes
         added_options.add(angr.options.APPROXIMATE_MEMORY_INDICES)  # vsa for mem_indices
 
     removed_options = set()
@@ -430,6 +454,7 @@ def trace(config_name, binary_name):
                                                        wtarget=(write_target_var.rebased_addr,
                                                                 write_target_var.size),
                                                        libc=libc, allocator=allocator))
+    state.heap.set_level(config['log_level'])
 
     if config['fix_loader_problem']:
         loader_name = os.path.basename(config['loader'])
@@ -568,7 +593,7 @@ def trace(config_name, binary_name):
         if config['store_desc']:
             store_vuln_descs(binary_name, found_paths, var_dict, arb_writes)
     # IPython.embed()
-    return len(found_paths)
+    return 0
 
 
 def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
@@ -628,13 +653,19 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
             desc.append('\t\t* use-after-free of {} with size of {}'.format(dst, size))
         # check controlled_data
         desc.append('\t- controlled_data:')
-        stdin = all_bytes(state.posix.fd[0].read_storage)
+        stdin_bytes = all_bytes(state.posix.fd[0].read_storage)
+        if stdin_bytes:
+            stdin_bytes = map(lambda b: b[0], stdin_bytes)
+            stdin = stdin_bytes[0]
+            for b in stdin_bytes[1:]:
+                stdin = stdin.concat(b)
         constraint_vars = map(lambda c: list(c.variables), state.solver.constraints)
         i = 0
         for read, fill_size in zip(bin_info['reads'], var_dict['fill_size_vars']):
             sol = state.solver.min(fill_size)
             for j in range(0, sol, 8):
                 i += j
+                # We should never end up here if stdin doesn't exist
                 curr_input = stdin.reversed[i + 7:i]
                 input_vars = list(curr_input.variables)
                 for input_var in input_vars:

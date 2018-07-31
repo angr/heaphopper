@@ -11,7 +11,7 @@ create_files: False
 # Specify the write_target's size in qwords (controlled memory where you want to write to for arb. write)
 wtarget_size: 4
 # Symbolic bytes in sim_data used for fake_free, etc... (default: 0x40)
-sym_data_size: 0x20
+sym_data_size: 0x100
 # Specify the number of actions in one zoo case
 zoo_depth: 4
 # Specify the zoo actions out of (malloc, free, overflow, uaf, fake_free, double_free, single_bitflip, arb_relative_write)

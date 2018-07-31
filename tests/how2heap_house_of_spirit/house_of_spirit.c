@@ -40,7 +40,7 @@ int main(void) {
     //sym_data_0.data[0x9] = 0x1234;
 
     // VULN: Fake_free
-	free(((char *) &sym_data.data) + mem2chunk_offset);
+	free(((uint8_t *) &sym_data.data) + mem2chunk_offset);
 
 	// Allocation
     ctrl_data_0.global_var = malloc(malloc_sizes[0]);

@@ -29,7 +29,7 @@ size_t bf_offsets[0];
 controlled_data __attribute__((aligned(16))) ctrl_data_0;
 controlled_data __attribute__((aligned(16))) ctrl_data_1;
 controlled_data __attribute__((aligned(16))) ctrl_data_2;
-controlled_data __attribute__((aligned(16))) ctrl_data_3;
+
 
 int main(void) {
 	void *dummy_chunk = malloc(0x200);

@@ -103,15 +103,19 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
     if 'ctrl_data' in sym:
         alloc_index = int(re.findall('ctrl_data_(\d+)', sym)[0])
         base = allocs[alloc_index] + sym_off
+        sym_prefix = ''
     else:
         symbol = main_bin.get_symbol(sym)
         if not symbol:
             return hex(addr), (0, 0x0)
         base = symbol.rebased_addr + sym_off
-        sym = '&' + sym
+        sym = sym
+        sym_prefix = '&'
 
     addr_clean = addr & ~0x7
     for key, value in main_bin.symbols_by_addr.items():
+        if sym == value.name:
+            continue
         if base + addr_clean >= key and base + addr_clean < key + value.size:
             if value.name != 'write_target':
                 for i in range(0, 0x40, 8):
@@ -120,19 +124,17 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
                         value = main_bin.symbols_by_addr[key]
                         break
             off = base + addr_clean - key
-            expr = '(uint64_t) ((((char *) &{}) - (char *) {}) - {}) + {}'.format(value.name, sym, sym_off, off)
-            print expr
+            expr = '(uint64_t) ((((char *) &{}) - (char *) {}{}) - {}) + {}'.format(value.name, sym_prefix, sym, sym_off, off)
             return expr, (0, 0x0)
         elif base - addr_clean >= key and base - addr_clean < key + value.size:
-            if value.name != 'write_target':
+            if value.name != 'write_traget':
                 for i in range(0, 0x40, 8):
                     if key + i in main_bin.symbols_by_addr and main_bin.symbols_by_addr[key + i].name == 'write_target':
                         key = key + i
                         value = main_bin.symbols_by_addr[key]
                         break
             off = base - addr_clean - key
-            expr = '(uint64_t) ((((char *) {}) - (char *) &{}) + {}) - {}'.format(sym, value.name, sym_off, off)
-            print expr
+            expr = '(uint64_t) ((((char *) {}{}) - (char *) &{}) + {}) - {}'.format(sym_prefix, sym, value.name, sym_off, off)
             return expr, (0, 0x0)
 
     for idx, alloc in enumerate(allocs):
@@ -140,13 +142,11 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
             off = base + addr_clean - alloc
             expr = '(uint64_t) ((((char *) ctrl_data_{}.global_var) - (char *) {}) - {}) + {}'.format(idx, sym, sym_off,
                                                                                                       off)
-            print expr
             return expr, (0, 0x0)
         elif base - addr_clean >= alloc and idx < len(allocs) - 1 and base - addr_clean < allocs[idx + 1]:
             off = base - addr_clean - alloc
             expr = '(uint64_t) ((((char *) {}) - (char *) ctrl_data_{}.global_var) + {}) - {}'.format(sym, idx, sym_off,
                                                                                                       off)
-            print expr
             return expr, (0, 0x0)
 
     if 'write_target' in sym:

@@ -11,9 +11,9 @@ class HeapConditionTracker(SimStatePlugin):
         pass
 
     def __init__(self, config=None, libc=None, allocator=None, initialized=0, vulnerable=False, vuln_state=None,
-                 vuln_type='', malloc_dict=None, free_dict=None, write_bp=None, wtarget=None,
+                 vuln_type='', malloc_dict=None, free_dict=None, write_bps=None, wtarget=None,
                  req_size=None, arb_write_info=None, double_free=None, fake_frees=None, stack_trace=None,
-                 ctrl_data_idx=0, **kwargs):
+                 ctrl_data_idx=0, curr_freed_chunk=None, sym_data_states=None, sym_data_size=None, **kwargs):
         super(HeapConditionTracker, self).__init__()
         self.config = config
         self.libc = libc
@@ -26,7 +26,7 @@ class HeapConditionTracker(SimStatePlugin):
         self.free_dict = dict() if free_dict is None else dict(free_dict)
         self.double_free = list() if double_free is None else list(double_free)
         self.fake_frees = list() if fake_frees is None else list(fake_frees)
-        self.write_bp = write_bp
+        self.write_bps = list() if write_bps is None else list(write_bps)
         self.wtarget = wtarget
         self.req_size = req_size
         self.arb_write_info = dict() if arb_write_info is None else dict(arb_write_info)
@@ -34,6 +34,13 @@ class HeapConditionTracker(SimStatePlugin):
         self.stack_trace = list() if stack_trace is None else list(stack_trace)
         # Counter for malloc dests
         self.ctrl_data_idx = ctrl_data_idx
+        # Current object passed to free info
+        self.curr_freed_chunk = curr_freed_chunk
+        self.sym_data_states = dict() if sym_data_states is None else dict(sym_data_states)
+        self.sym_data_size = sym_data_size
+
+    def set_level(self, level):
+        logger.setLevel(level)
 
     @SimStatePlugin.memo
     def copy(self, _memo):
@@ -60,8 +67,8 @@ class HeapConditionTracker(SimStatePlugin):
             if not self.arb_write_info and o.arb_write_info:
                 self.arb_write_info = dict(o.arb_write_info)
 
-            if not self.write_bp and o.write_bp:
-                self.write_bp = o.write_bp
+            if not self.write_bps and o.write_bps:
+                self.write_bps = o.write_bps
 
             if not self.wtarget and o.wtarget:
                 self.wtarget = o.wtarget
@@ -96,12 +103,17 @@ class MallocInspect(SimProcedure):
 
     def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None):
         if 'arb_write' in vulns:
-            self.state.heap.write_bp = self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                            action=check_write)
+            self.state.heap.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
+                                                            action=check_write))
         self.state.heap.req_size = size
         self.call(malloc_addr, (size,), 'check_malloc')
 
     def check_malloc(self, size, malloc_addr, vulns=None, ctrl_data=None): #pylint:disable=unused-argument
+        # Clear breakpoints
+        for bp in self.state.heap.write_bps:
+            self.state.inspect.remove_breakpoint('mem_write', bp=bp)
+        self.state.heap.write_bps = []
+
         # Don't track heap_init malloc
         if self.state.heap.initialized == 0:
             self.state.heap.initialized = 1
@@ -109,7 +121,6 @@ class MallocInspect(SimProcedure):
 
         if 'arb_write' in vulns:
             # Remove breakpoint and check for arbitrary writes
-            self.state.inspect.remove_breakpoint('mem_write', bp=self.state.heap.write_bp)
             if self.state.heap.vuln_type == 'arbitrary_write':
                 logger.info('Found arbitrary write')
                 self.state.heap.vulnerable = True
@@ -232,11 +243,25 @@ class FreeInspect(SimProcedure):
                         self.state.heap.double_free.append(val)
 
         if 'arb_write' in vulns:
-            self.state.heap.write_bp = self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                            action=check_write)
+            self.state.heap.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
+                                                            action=check_write))
+
+        if val in sym_data:
+            self.state.heap.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
+                                                            action=check_sym_data))
+        self.state.heap.curr_freed_chunk = val
+
         self.call(free_addr, [ptr], 'check_free')
 
     def check_free(self, ptr, free_addr, vulns=None, sym_data=None): #pylint:disable=unused-argument
+        # Clear the chunk currently being freed
+        self.state.curr_freed_chunk = None
+
+        # Clear breakpoints
+        for bp in self.state.heap.write_bps:
+            self.state.inspect.remove_breakpoint('mem_write', bp=bp)
+        self.state.heap.write_bps = []
+
         # Don't track heap_init free
         if self.state.heap.initialized == 1:
             self.state.heap.initialized = 2
@@ -263,7 +288,6 @@ class FreeInspect(SimProcedure):
             return
 
         # Remove breakpoint and check for arbitrary writes
-        self.state.inspect.remove_breakpoint('mem_write', bp=self.state.heap.write_bp)
         if self.state.heap.vuln_type == 'arbitrary_write':
             logger.info('Found arbitrary write')
             self.state.heap.vulnerable = True
@@ -273,21 +297,39 @@ class FreeInspect(SimProcedure):
 
 
 def check_write(state):
-    # Don't do it twice
+    # If we found an arb_write we're done
     if state.heap.vuln_type.startswith('arbitrary_write'):
         return
 
+    # Check if we have an arbitrary_write
     addr = state.inspect.mem_write_address
     val = state.inspect.mem_write_expr
+    logger.debug('check_write: addr: %s' % addr)
+    logger.debug('check_write: val: %s' % val)
     constr = claripy.And(addr >= state.heap.wtarget[0],
                          addr < state.heap.wtarget[0] + state.heap.wtarget[1])
 
     if state.solver.satisfiable(extra_constraints=[constr]):
+        logger.debug('check_write: Found arbitrary write')
         state.add_constraints(constr)
         state.heap.vuln_state = state.copy()
         state.heap.arb_write_info = dict(instr=state.addr, addr=addr, val=val)
         state.heap.vuln_type = 'arbitrary_write'
         state.heap.stack_trace = get_libc_stack_trace(state)
+
+def check_sym_data(state):
+    # Check if we overwrite a sym_data structure passed to free
+    addr = state.inspect.mem_write_address
+    free_addr = state.heap.curr_freed_chunk
+    if free_addr in state.heap.sym_data_states and not state.heap.sym_data_states[free_addr]:
+        logger.debug('check_sym_data: curr_freed_chunk: 0x%x' % free_addr)
+        logger.debug('check_sym_data: addr: %s' % addr)
+        constr = claripy.And(addr >= free_addr, addr < free_addr + state.heap.sym_data_size)
+        if not state.solver.symbolic(addr) and state.solver.satisfiable(extra_constraints=[constr]):
+            logger.debug('check_sym_data: Saving state')
+            state.heap.sym_data_states[free_addr] = state.copy()
+
+
 
 
 def get_libc_stack_trace(state):
