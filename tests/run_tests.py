@@ -206,8 +206,8 @@ def how2heap_tests(results_dict):
              'how2heap_house_of_lore': ['analysis.yaml', 'house_of_lore.bin', 'malloc_non_heap'],
              'how2heap_house_of_spirit': ['analysis.yaml', 'house_of_spirit.bin', 'malloc_non_heap'],
              'how2heap_overlapping_chunks': ['analysis.yaml', 'overlapping_chunks.bin', 'malloc_allocated'],
-             'how2heap_unsafe_unlink': ['analysis.yaml', 'unsafe_unlink.bin', 'arbitrary_write_free'],
              'how2heap_unsorted_bin_attack': ['analysis.yaml', 'unsorted_bin_attack.bin', 'arbitrary_write_malloc']}
+             # 'how2heap_unsafe_unlink': ['analysis.yaml', 'unsafe_unlink.bin', 'arbitrary_write_free'],
              #'how2heap_house_of_einherjar': ['analysis.yaml', 'house_of_einherjar.bin', 'malloc_non_heap'],
              #'how2heap_poison_null_byte': ['analysis.yaml', 'poison_null_byte.bin', 'malloc_allocated']}
 
