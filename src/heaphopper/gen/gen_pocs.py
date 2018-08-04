@@ -195,7 +195,7 @@ def gen_poc(result, src_file, bin_file, last_line):
             space = ''.join(takewhile(str.isspace, line))
             if 'free(dummy_chunk)' in line:
                 poc.append(line)
-                poc.append('\t# if print\n\t\tprintf("Init printf\\n");\n\t# endif\n')
+                poc.append('\t# if print\n\t\tprintf("Init printf: %p\\n", dummy_chunk);\n\t# endif\n')
                 last_action_size += 2
             elif 'free(ctrl_data' in line:
                 poc.append(line)
