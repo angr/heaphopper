@@ -122,7 +122,7 @@ class MallocInspect(SimProcedure):
         if 'arb_write' in vulns:
             # Remove breakpoint and check for arbitrary writes
             if self.state.heap.vuln_type == 'arbitrary_write':
-                logger.info('Found arbitrary write')
+                #logger.info('Found arbitrary write')
                 self.state.heap.vulnerable = True
                 self.state.heap.vuln_type = 'arbitrary_write_malloc'
 
@@ -289,7 +289,7 @@ class FreeInspect(SimProcedure):
 
         # Remove breakpoint and check for arbitrary writes
         if self.state.heap.vuln_type == 'arbitrary_write':
-            logger.info('Found arbitrary write')
+            #logger.info('Found arbitrary write')
             self.state.heap.vulnerable = True
             self.state.heap.vuln_type = 'arbitrary_write_free'
 
@@ -304,13 +304,13 @@ def check_write(state):
     # Check if we have an arbitrary_write
     addr = state.inspect.mem_write_address
     val = state.inspect.mem_write_expr
-    logger.debug('check_write: addr: %s' % addr)
-    logger.debug('check_write: val: %s' % val)
+    #logger.debug('check_write: addr: %s' % addr)
+    #logger.debug('check_write: val: %s' % val)
     constr = claripy.And(addr >= state.heap.wtarget[0],
                          addr < state.heap.wtarget[0] + state.heap.wtarget[1])
 
     if state.solver.satisfiable(extra_constraints=[constr]):
-        logger.debug('check_write: Found arbitrary write')
+        #logger.debug('check_write: Found arbitrary write')
         state.add_constraints(constr)
         state.heap.vuln_state = state.copy()
         state.heap.arb_write_info = dict(instr=state.addr, addr=addr, val=val)
@@ -322,11 +322,11 @@ def check_sym_data(state):
     addr = state.inspect.mem_write_address
     free_addr = state.heap.curr_freed_chunk
     if free_addr in state.heap.sym_data_states and not state.heap.sym_data_states[free_addr]:
-        logger.debug('check_sym_data: curr_freed_chunk: 0x%x' % free_addr)
-        logger.debug('check_sym_data: addr: %s' % addr)
+        #logger.debug('check_sym_data: curr_freed_chunk: 0x%x' % free_addr)
+        #logger.debug('check_sym_data: addr: %s' % addr)
         constr = claripy.And(addr >= free_addr, addr < free_addr + state.heap.sym_data_size)
         if not state.solver.symbolic(addr) and state.solver.satisfiable(extra_constraints=[constr]):
-            logger.debug('check_sym_data: Saving state')
+            #logger.debug('check_sym_data: Saving state')
             state.heap.sym_data_states[free_addr] = state.copy()
 
 
