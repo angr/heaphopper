@@ -5,7 +5,7 @@
 # Setup
 
 ``` bash
-git clone https://github.com/shellphish/heaphopper && cd ./heaphopper
+git clone https://github.com/angr/heaphopper.git && cd ./heaphopper
 mkvirtualenv -ppython2 heaphopper
 pip install -r requirements.txt
 ```
