@@ -17,6 +17,7 @@ pip install -r requirements.txt
 src/check_heap.py gen -c src/analysis.yaml
 
 #  Trace instance
+make -C tests
 src/check_heap.py  trace -c tests/how2heap_fastbin_dup/analysis.yaml -b tests/how2heap_fastbin_dup/fastbin_dup.bin
 
 # Gen PoC
