@@ -34,10 +34,10 @@ def store_results(results_dict):
 def run_single(folder_name, analysis_name, binary_name):
     start = time.time()
     if not VERBOSE:
-        call(['python', 'src/check_heap.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
+        call(['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
               '-b', '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR), stdout=DEVNULL, stderr=STDOUT)
     else:
-        print check_output(['python', 'src/check_heap.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
+        print check_output(['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
          '-b', '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR))
     ts = time.time() - start
     return ts
@@ -46,7 +46,7 @@ def run_single(folder_name, analysis_name, binary_name):
 def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc_name, source_name, poc_path):
     if not VERBOSE:
         try:
-            check_call(['python', 'src/check_heap.py', 'poc',
+            check_call(['python', 'heaphopper.py', 'poc',
                         '-c', '{}/{}'.format(folder_name, analysis_name),
                         '-b', '{}/{}'.format(folder_name, binary_name),
                         '-r', '{}'.format(result_name),
@@ -63,7 +63,7 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
             return False
 
     else:
-        print check_output(['python', 'src/check_heap.py', 'poc',
+        print check_output(['python', 'heaphopper.py', 'poc',
                             '-c', '{}/{}'.format(folder_name, analysis_name),
                             '-b', '{}/{}'.format(folder_name, binary_name),
                             '-r', '{}'.format(result_name),
