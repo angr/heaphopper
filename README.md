@@ -1,3 +1,11 @@
+heaphopper
+===
+
+[![Build Status](https://travis-ci.org/angr/heaphopper.svg?branch=master)](https://travis-ci.org/angr/heaphopper)
+[![License](https://img.shields.io/github/license/angr/angr.svg)](https://github.com/angr/heaphopper/blob/master/LICENSE)
+
+HeapHopper is a bounded model checking framework for Heap-implementations.
+
 # Overview
 
 ![Overview](overview.png)
@@ -5,9 +13,10 @@
 # Setup
 
 ``` bash
+sudo apt update && sudo apt install build-essential python-dev virtualenvwrapper
 git clone https://github.com/angr/heaphopper.git && cd ./heaphopper
 mkvirtualenv -ppython2 heaphopper
-pip install -r requirements.txt
+pip install -e .
 ```
 
 #### Required Packages
@@ -15,18 +24,23 @@ pip install -r requirements.txt
 build-essential python-dev virtualenvwrapper
 ```
 
+#### Required Python-Packages
+``` bash
+ana angr cle claripy IPython psutil pyelftools pyyaml
+```
+
 # Examples
 
 ``` bash
 # Gen zoo of permutations
-src/check_heap.py gen -c src/analysis.yaml
+heaphopper.py gen -c analysis.yaml
 
 #  Trace instance
 make -C tests
-src/check_heap.py  trace -c tests/how2heap_fastbin_dup/analysis.yaml -b tests/how2heap_fastbin_dup/fastbin_dup.bin
+heaphopper.py  trace -c tests/how2heap_fastbin_dup/analysis.yaml -b tests/how2heap_fastbin_dup/fastbin_dup.bin
 
 # Gen PoC
-src/check_heap.py poc -c tests/how2heap_fastbin_dup/analysis.yaml -r tests/how2heap_fastbin_dup/fastbin_dup.bin-result.yaml -d tests/how2heap_fastbin_dup/fastbin_dup.bin-desc.yaml -s tests/how2heap_fastbin_dup/fastbin_dup.c -b tests/how2heap_fastbin_dup/fastbin_dup.bin
+heaphopper.py poc -c tests/how2heap_fastbin_dup/analysis.yaml -r tests/how2heap_fastbin_dup/fastbin_dup.bin-result.yaml -d tests/how2heap_fastbin_dup/fastbin_dup.bin-desc.yaml -s tests/how2heap_fastbin_dup/fastbin_dup.c -b tests/how2heap_fastbin_dup/fastbin_dup.bin
 
 # Tests
 cd tests
