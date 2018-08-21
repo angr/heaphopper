@@ -34,7 +34,7 @@ def store_results(results_dict):
 def run_single(folder_name, analysis_name, binary_name):
     start = time.time()
     if not VERBOSE:
-        call(['python', 'src/check_heap.py', 'trace', '-c', '{}'.format(folder_name, analysis_name),
+        call(['python', 'src/check_heap.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
               '-b', '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR), stdout=DEVNULL, stderr=STDOUT)
     else:
         print check_output(['python', 'src/check_heap.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
@@ -128,16 +128,21 @@ def verify_arbitrary_write(output):
 
     return False
 
+def make_tests():
+    call(['make', '-C', BASE_DIR], stdout=DEVNULL, stderr=STDOUT)
+
 
 def test_fastbin_dup():
-        TIME=20
+        TIME=25
         info = dict(folder_name='how2heap_fastbin_dup', conf='analysis.yaml', bin_name='fastbin_dup.bin', type='malloc_non_heap')
         location = str(os.path.join(BASE_DIR, info['folder_name']))
+
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
+        make_tests()
 
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
@@ -152,13 +157,15 @@ def test_fastbin_dup():
         nose.tools.assert_true(poc_worked)
 
 def test_house_of_lore():
-        TIME=20
+        TIME=75
         info = dict(folder_name='how2heap_house_of_lore', conf='analysis.yaml', bin_name='house_of_lore.bin', type='malloc_non_heap')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+
+        make_tests()
 
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
@@ -173,13 +180,16 @@ def test_house_of_lore():
         nose.tools.assert_true(poc_worked)
 
 def test_house_of_spirit():
-        TIME=100
+        TIME=35
         info = dict(folder_name='how2heap_house_of_spirit', conf='analysis.yaml', bin_name='house_of_spirit.bin', type='malloc_non_heap')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+
+        make_tests()
+
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
 
@@ -193,13 +203,16 @@ def test_house_of_spirit():
         nose.tools.assert_true(poc_worked)
 
 def test_overlapping_chunks():
-        TIME=100
+        TIME=35
         info = dict(folder_name='how2heap_overlapping_chunks', conf='analysis.yaml', bin_name='overlapping_chunks.bin', type='malloc_allocated')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+
+        make_tests()
+
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
 
@@ -213,13 +226,16 @@ def test_overlapping_chunks():
         nose.tools.assert_true(poc_worked)
 
 def test_unsorted_bin_attack():
-        TIME=100
+        TIME=15
         info = dict(folder_name='how2heap_unsorted_bin_attack', conf='analysis.yaml', bin_name='unsorted_bin_attack.bin', type='arbitrary_write_malloc')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/*/{}'.format(location, info['type'], info['bin_name'])
+
+        make_tests()
+
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
 
@@ -233,13 +249,16 @@ def test_unsorted_bin_attack():
         nose.tools.assert_true(poc_worked)
 
 #def test_unsafe_unlink():
-#        TIME=100
+#        TIME=500
 #        info = dict(folder_name='how2heap_unsafe_unlink', conf='analysis.yaml', bin_name='unsorted_bin_attack.bin', type='arbitrary_write_free')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/*/{}'.format(location, info['type'], info['bin_name'])
+#
+#        make_tests()
+#
 #        ts = run_single(location, info['conf'], info['bin_name'])
 #        nose.tools.assert_less(ts, TIME)
 #
@@ -253,13 +272,16 @@ def test_unsorted_bin_attack():
 #        nose.tools.assert_true(poc_worked)
 #
 #def test_house_of_einherjar():
-#        TIME=100
+#        TIME=500
 #        info = dict(folder_name='how2heap_house_of_einherjar', conf='analysis.yaml', bin_name='house_of_einherjar.bin', type='malloc_non_heap')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+#
+#        make_tests()
+#
 #        ts = run_single(location, info['conf'], info['bin_name'])
 #        nose.tools.assert_less(ts, TIME)
 #
@@ -273,13 +295,16 @@ def test_unsorted_bin_attack():
 #        nose.tools.assert_true(poc_worked)
 #
 #def test_poison_null_byte():
-#        TIME=100
+#        TIME=500
 #        info = dict(folder_name='how2heap_poison_null_byte', conf='analysis.yaml', bin_name='poison_null_byte.bin', type='malloc_allocated')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+#
+#        make_tests()
+#
 #        ts = run_single(location, info['conf'], info['bin_name'])
 #        nose.tools.assert_less(ts, TIME)
 #
@@ -303,8 +328,6 @@ def run_all():
 
 if __name__ == "__main__":
 
-    # Make tests
-    check_call(['make', BASE_DIR], stdout=DEVNULL, stderr=STDOUT)
 
     # Run tests
     if len(sys.argv) > 1:

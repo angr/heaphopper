@@ -12,7 +12,7 @@ OBJECTS = $(BINS:.bin=.o)
 SOURCES = $(BINS:.bin=.c)
 RESULTS = $(BINS:.bin=.bin-result.yaml)
 DESCS = $(BINS:.bin=.bin-desc.yaml)
-POCS = pocs
+POCS = ./*/pocs
 
 all: $(BINS)
 
