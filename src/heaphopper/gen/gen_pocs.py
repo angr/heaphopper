@@ -221,7 +221,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                                                        line)[0])
                 poc.append(line)
                 poc.append(
-                    ('{}#if print\n{}\tprintf("Allocation: %p\\nSize: %lx\\n",'
+                    ('{}#if print\n{}\tprintf("Allocation: %p\\nSize: 0x%lx\\n",'
                      'ctrl_data_{}.global_var, malloc_sizes[{}]);\n{}#endif\n').format(
                         space,
                         space,

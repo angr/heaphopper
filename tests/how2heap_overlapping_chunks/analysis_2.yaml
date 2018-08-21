@@ -47,3 +47,7 @@ log_level: DEBUG
 # Specify vulnerabilities to detect: arbitrary write, allocations over already allocated memory, allocations over non-
 # heap-memory, freeing of fake chunks
 vulns: [overlap_alloc]
+
+
+# Define where to store the proof-of-concept c-files
+pocs_path: tests/how2heap_overlapping_chunks/pocs

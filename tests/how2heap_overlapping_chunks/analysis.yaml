@@ -46,3 +46,7 @@ chunk_fill_size: zero
 # heap-memory, freeing of fake chunks
 vulns: [overlap_alloc]
 #store_desc: False
+
+
+# Define where to store the proof-of-concept c-files
+pocs_path: tests/how2heap_overlapping_chunks/pocs/

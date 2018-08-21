@@ -59,7 +59,5 @@ use_concretizer: False
 #############################
 #    pocs-gen settings      #
 #############################
-# Define where to store the proof-of-concept c-files
-pocs_path: tests/pocs
 # Results may contain symbolic values which allow for multiple solutions, specify how many solutions you want to get
 num_results: 1
