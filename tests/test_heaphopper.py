@@ -53,8 +53,11 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
                     '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR), stdout=DEVNULL, stderr=STDOUT)
 
         poc_path = glob.glob(poc_path)[0]
-
-        check_call(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL, stderr=STDOUT)
+        try:
+            check_output(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL, stderr=STDOUT)
+        except CalledProcessError as e:
+            print e.output
+            return False
 
     else:
         print check_output(['python', 'heaphopper.py', 'poc',
