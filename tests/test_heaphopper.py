@@ -136,8 +136,6 @@ def test_02_fastbin_dup():
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
-        make_tests()
-
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
 
@@ -158,8 +156,6 @@ def test_03_house_of_lore():
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
-
-        make_tests()
 
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
@@ -182,8 +178,6 @@ def test_04_house_of_spirit():
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
-        make_tests()
-
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
 
@@ -204,8 +198,6 @@ def test_05_overlapping_chunks():
         desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
-
-        make_tests()
 
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
@@ -228,8 +220,6 @@ def test_06_unsorted_bin_attack():
         source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
         poc_path = '{}/pocs/{}/*/{}'.format(location, info['type'], info['bin_name'])
 
-        make_tests()
-
         ts = run_single(location, info['conf'], info['bin_name'])
         nose.tools.assert_less(ts, TIME)
 
@@ -250,8 +240,6 @@ def test_06_unsorted_bin_attack():
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/*/{}'.format(location, info['type'], info['bin_name'])
-#
-#        make_tests()
 #
 #        ts = run_single(location, info['conf'], info['bin_name'])
 #        nose.tools.assert_less(ts, TIME)
@@ -274,8 +262,6 @@ def test_06_unsorted_bin_attack():
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 #
-#        make_tests()
-#
 #        ts = run_single(location, info['conf'], info['bin_name'])
 #        nose.tools.assert_less(ts, TIME)
 #
@@ -296,8 +282,6 @@ def test_06_unsorted_bin_attack():
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
-#
-#        make_tests()
 #
 #        ts = run_single(location, info['conf'], info['bin_name'])
 #        nose.tools.assert_less(ts, TIME)
