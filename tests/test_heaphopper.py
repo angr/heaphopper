@@ -45,22 +45,16 @@ def run_single(folder_name, analysis_name, binary_name):
 
 def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc_name, source_name, poc_path):
     if not VERBOSE:
-        try:
-            check_call(['python', 'heaphopper.py', 'poc',
-                        '-c', '{}/{}'.format(folder_name, analysis_name),
-                        '-b', '{}/{}'.format(folder_name, binary_name),
-                        '-r', '{}'.format(result_name),
-                        '-d', '{}'.format(desc_name),
-                        '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR), stdout=DEVNULL, stderr=STDOUT)
-        except CalledProcessError:
-            return False
+        check_call(['python', 'heaphopper.py', 'poc',
+                    '-c', '{}/{}'.format(folder_name, analysis_name),
+                    '-b', '{}/{}'.format(folder_name, binary_name),
+                    '-r', '{}'.format(result_name),
+                    '-d', '{}'.format(desc_name),
+                    '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR), stdout=DEVNULL, stderr=STDOUT)
 
         poc_path = glob.glob(poc_path)[0]
 
-        try:
-            check_call(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL, stderr=STDOUT)
-        except CalledProcessError:
-            return False
+        check_call(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL, stderr=STDOUT)
 
     else:
         print check_output(['python', 'heaphopper.py', 'poc',
@@ -78,10 +72,8 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
 
 def verify_poc_single(poc_path, poc_type):
     poc_bin = '{}/bin/poc_0_0.bin'.format(poc_path)
-    try:
-        output = check_output(['{}/run_poc.sh'.format(BASE_DIR), poc_bin], cwd='{}'.format(BASE_DIR))
-    except CalledProcessError:
-        return False
+    output = check_output(['{}/run_poc.sh'.format(BASE_DIR), poc_bin], cwd='{}'.format(BASE_DIR))
+
     if VERBOSE:
         print output
 
@@ -129,7 +121,9 @@ def verify_arbitrary_write(output):
     return False
 
 def make_tests():
-    call(['make', '-C', BASE_DIR], stdout=DEVNULL, stderr=STDOUT)
+    output = check_output(['make', '-C', BASE_DIR])
+    if VERBOSE:
+        print output
 
 
 def test_fastbin_dup():
