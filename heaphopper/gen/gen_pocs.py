@@ -533,7 +533,7 @@ def create_makefile(poc_dir, fnames, allocator, libc):
 
     with open('{}/Makefile'.format(poc_dir), 'w') as f:
         f.write('CC = gcc\n')
-        f.write('CFLAGS += -std=c99 -g -O0\n')
+        f.write('CFLAGS += -std=c99 -g -O0 -w\n')
         f.write('LDFLAGS += -no-pie\n')
         f.write('SOURCES = $(wildcard *.c)\n')
         f.write('OBJECTS = $(SOURCES:.c=.o)\n')

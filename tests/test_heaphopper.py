@@ -54,7 +54,7 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
 
         poc_path = glob.glob(poc_path)[0]
         try:
-            check_call(['make', '-C', poc_path, 'pocs-print'])
+            check_call(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL)
         except CalledProcessError as e:
             print e.output
             return False
