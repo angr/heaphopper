@@ -149,7 +149,7 @@ def test_02_fastbin_dup():
         nose.tools.assert_true(poc_worked)
 
 def test_03_house_of_lore():
-        TIME=75
+        TIME=90
         info = dict(folder_name='how2heap_house_of_lore', conf='analysis.yaml', bin_name='house_of_lore.bin', type='malloc_non_heap')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
@@ -170,7 +170,7 @@ def test_03_house_of_lore():
         nose.tools.assert_true(poc_worked)
 
 def test_04_house_of_spirit():
-        TIME=35
+        TIME=30
         info = dict(folder_name='how2heap_house_of_spirit', conf='analysis.yaml', bin_name='house_of_spirit.bin', type='malloc_non_heap')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
@@ -191,7 +191,7 @@ def test_04_house_of_spirit():
         nose.tools.assert_true(poc_worked)
 
 def test_05_overlapping_chunks():
-        TIME=35
+        TIME=30
         info = dict(folder_name='how2heap_overlapping_chunks', conf='analysis.yaml', bin_name='overlapping_chunks.bin', type='malloc_allocated')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
@@ -212,7 +212,7 @@ def test_05_overlapping_chunks():
         nose.tools.assert_true(poc_worked)
 
 def test_06_unsorted_bin_attack():
-        TIME=15
+        TIME=20
         info = dict(folder_name='how2heap_unsorted_bin_attack', conf='analysis.yaml', bin_name='unsorted_bin_attack.bin', type='arbitrary_write_malloc')
         location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
         result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
