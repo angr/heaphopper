@@ -113,7 +113,7 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
         sym_prefix = '&'
 
     addr_clean = addr & ~0x7
-    for key, value in main_bin.symbols_by_addr.items():
+    for key, value in list(main_bin.symbols_by_addr.items()):
         if sym == value.name:
             continue
         if base + addr_clean >= key and base + addr_clean < key + value.size:
@@ -217,8 +217,8 @@ def gen_poc(result, src_file, bin_file, last_line):
             elif ' = malloc(malloc_sizes' in line:  # allocation
                 last_action_size += 2
                 poc_desc['allocs'] += 1
-                dst, msize_index = map(int, re.findall('ctrl_data_(\d+).global_var = malloc\(malloc_sizes\[(\d+)\]\);',
-                                                       line)[0])
+                dst, msize_index = list(map(int, re.findall('ctrl_data_(\d+).global_var = malloc\(malloc_sizes\[(\d+)\]\);',
+                                                       line)[0]))
                 poc.append(line)
                 poc.append(
                     ('{}#if print\n{}\tprintf("Allocation: %p\\nSize: 0x%lx\\n",'
@@ -229,16 +229,16 @@ def gen_poc(result, src_file, bin_file, last_line):
                         msize_index,
                         space))
                 try:
-                    for_line = iter_lines.next()  # get for
-                    iter_lines.next()  # get read
-                    iter_lines.next()  # get curly brace
+                    for_line = next(iter_lines)  # get for
+                    next(iter_lines)  # get read
+                    next(iter_lines)  # get curly brace
                 except StopIteration:
                     continue
                 if not len(stdin_opt):
                     continue
                 fsize_index = int(re.findall('fill_sizes\[(\d+)\]', for_line)[0])
                 prev_part = (0, 0x0)
-                for i in xrange(0, fsizes[fsize_index], 8):
+                for i in range(0, fsizes[fsize_index], 8):
                     val = '0x' + stdin_opt[:8][::-1].encode('hex')
                     stdin_opt = stdin_opt[8:]
                     if len(stdin_opt) >= 8:
@@ -289,7 +289,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 poc.append('{}{} = {};'.format(space, offset_dst, sym_offset))
                 last_action_size += 1
 
-                line = iter_lines.next()  # get second read
+                line = next(iter_lines)  # get second read
                 read_dst = re.findall(r'read\(.*, (.*), .*\)', line)[0]
                 read_base, read_offset = read_dst.split('+')
                 val = '0x' + input_opt[:8][::-1].encode('hex')
@@ -308,7 +308,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 poc.append('{}{} = {};'.format(space, offset_dst, sym_offset))
                 last_action_size += 1
 
-                line = iter_lines.next()  # get second read
+                line = next(iter_lines)  # get second read
                 bit_dst = re.findall(r'read\(0, (bit_\d+), .*\)', line)[0]
                 val = '0x' + stdin_opt[:1].encode('hex')
                 stdin_opt = stdin_opt[1:]
@@ -326,7 +326,7 @@ def gen_poc(result, src_file, bin_file, last_line):
 
                 new_size = osizes[index]
                 prev_part = (0, 0x0)
-                for i in xrange(0, new_size, 8):
+                for i in range(0, new_size, 8):
                     if new_size - i < 8:
                         break
                     val = '0x' + input_opt[:8][::-1].encode('hex')

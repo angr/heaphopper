@@ -159,7 +159,7 @@ class MallocInspect(SimProcedure):
         self.state.heap.malloc_dict[dict_key] = (self.state.heap.req_size, addr)
 
         # Remove from free dict if reallocated
-        for key in self.state.heap.free_dict.keys():
+        for key in list(self.state.heap.free_dict.keys()):
             sol = self.state.solver.min(self.state.heap.free_dict[key][1])
             if val == sol:
                 self.state.heap.free_dict.pop(key)
@@ -194,7 +194,7 @@ class MallocInspect(SimProcedure):
             self.state.add_constraints(self.state.heap.req_size == size_vals[0])
 
         # Remove from free dict if reallocated
-        for key in self.state.heap.free_dict.keys():
+        for key in list(self.state.heap.free_dict.keys()):
             sol = self.state.solver.min(self.state.heap.free_dict[key][1])
             if val == sol:
                 self.state.heap.free_dict.pop(key)
@@ -203,7 +203,7 @@ class MallocInspect(SimProcedure):
         return addr
 
     def check_overlap(self, malloc_dict, addr, req_size):
-        for dst in malloc_dict.keys():
+        for dst in list(malloc_dict.keys()):
             alloc = malloc_dict[dst][1]
             condition1 = self.state.solver.And(alloc < addr, alloc + malloc_dict[dst][0] > addr)
             condition2 = self.state.solver.And(alloc > addr, addr + req_size > alloc)
@@ -230,14 +230,14 @@ class FreeInspect(SimProcedure):
             self.state.heap.fake_frees.append(val)
         else:
             found = False
-            for key in self.state.heap.malloc_dict.keys():
+            for key in list(self.state.heap.malloc_dict.keys()):
                 sol = self.state.solver.min(self.state.heap.malloc_dict[key][1])
                 if val == sol:
                     minfo = self.state.heap.malloc_dict.pop(key)
                     self.state.heap.free_dict[key] = minfo
                     found = True
             if not found:
-                for key in self.state.heap.free_dict.keys():
+                for key in list(self.state.heap.free_dict.keys()):
                     sol = self.state.solver.min(self.state.heap.free_dict[key][1])
                     if val == sol:
                         self.state.heap.double_free.append(val)

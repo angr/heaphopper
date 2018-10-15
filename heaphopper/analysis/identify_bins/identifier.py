@@ -76,7 +76,7 @@ def identify_bins(config):
     malloc_sizes = proj.loader.main_object.get_symbol('malloc_sizes')
 
     states = []
-    for i in xrange(8, 0x1008, 8):
+    for i in range(8, 0x1008, 8):
         s = state.copy()
         malloc_size = state.solver.BVV(i, 8 * 8)
         s.memory.store(malloc_sizes.rebased_addr, malloc_size, 8, endness='Iend_LE')
@@ -94,7 +94,7 @@ def identify_bins(config):
             IPython.embed()
 
         sm.step()
-        print sm
+        print(sm)
 
         if heardEnter():
             debug = True
@@ -103,7 +103,7 @@ def identify_bins(config):
     for found in sm.deadended:
         trace = tuple(found.rebased_addr_trace.hardcopy)
         curr = found.state.solver.any_int(found.state.memory.load(malloc_sizes.rebased_addr, 8, endness='Iend_LE'))
-        if trace in unique_paths.keys():
+        if trace in list(unique_paths.keys()):
             min_size, max_size = unique_paths[trace]
             if curr < min_size:
                 min_size = curr
@@ -113,7 +113,7 @@ def identify_bins(config):
         else:
             unique_paths[trace] = (curr, curr)
 
-    sorted_bins = sorted(unique_paths.values(), key=lambda tup: tup[0])
+    sorted_bins = sorted(list(unique_paths.values()), key=lambda tup: tup[0])
     for i, curr_bin in enumerate(sorted_bins):
         logger.debug('Bin[{}]: min={} max={}'.format(i, hex(curr_bin[0]), hex(curr_bin[1])))
     return sorted_bins

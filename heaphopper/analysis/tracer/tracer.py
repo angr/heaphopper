@@ -98,7 +98,7 @@ def get_last_line(win_addr, bin_file):
         elffile = ELFFile(bf)
 
         if not elffile.has_dwarf_info():
-            print '{} has no DWARF info'.format(bin_file)
+            print('{} has no DWARF info'.format(bin_file))
             sys.exit(1)
 
         # get_dwarf_info returns a DWARFInfo context object, which is the
@@ -140,7 +140,7 @@ def process_state(num_results, state, write_state, var_dict, fd):
 
         stdin_bytes = all_bytes(state.posix.fd[0].read_storage)
         if stdin_bytes:
-            stdin_bytes = map(lambda b: b[0], stdin_bytes)
+            stdin_bytes = [b[0] for b in stdin_bytes]
             stdin_stream = stdin_bytes[0]
             for b in stdin_bytes[1:]:
                 stdin_stream = stdin_stream.concat(b)
@@ -231,7 +231,7 @@ def process_state(num_results, state, write_state, var_dict, fd):
 
         arb_write = {}
         if s.heap.arb_write_info:
-            arb_write = {k: s.solver.eval(v) for k, v in s.heap.arb_write_info.items()}
+            arb_write = {k: s.solver.eval(v) for k, v in list(s.heap.arb_write_info.items())}
 
         processed_states.append(
             (input_opt, stdin_opt, svars, header, msizes, fsizes, osizes, wt_mem, allocs, arb_offsets,
@@ -259,7 +259,7 @@ def setup_state(state, proj, config):
     var_dict = dict()
     var_dict['global_vars'] = []
     var_dict['allocs'] = []
-    for i in xrange(20):
+    for i in range(20):
         cdata = proj.loader.main_object.get_symbol('ctrl_data_{}'.format(i))
         # check if ctrl_data exists
         if not cdata:
@@ -343,7 +343,7 @@ def setup_state(state, proj, config):
         var_dict['fill_size_vars'] = [header_size] * len(var_dict['fill_size_addrs'])
     if config['chunk_fill_size'] == 'chunk_size':
         var_dict['fill_size_vars'] = var_dict['malloc_size_bvs']
-    if type(config['chunk_fill_size']) in (int, long):
+    if type(config['chunk_fill_size']) in (int, int):
         var_dict['fill_size_vars'] = [claripy.BVV(config['chunk_fill_size'], 8 * 8)] * len(var_dict['fill_size_addrs'])
 
     for fsize, fill_var in zip(var_dict['fill_size_addrs'], var_dict['fill_size_vars']):
@@ -655,11 +655,11 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
         desc.append('\t- controlled_data:')
         stdin_bytes = all_bytes(state.posix.fd[0].read_storage)
         if stdin_bytes:
-            stdin_bytes = map(lambda b: b[0], stdin_bytes)
+            stdin_bytes = [b[0] for b in stdin_bytes]
             stdin = stdin_bytes[0]
             for b in stdin_bytes[1:]:
                 stdin = stdin.concat(b)
-        constraint_vars = map(lambda c: list(c.variables), state.solver.constraints)
+        constraint_vars = [list(c.variables) for c in state.solver.constraints]
         i = 0
         for read, fill_size in zip(bin_info['reads'], var_dict['fill_size_vars']):
             sol = state.solver.min(fill_size)
