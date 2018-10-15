@@ -490,7 +490,8 @@ def trace(config_name, binary_name):
     found_paths = []
 
     # Configure simgr
-    sm = proj.factory.simgr(thing=state, immutable=False)
+    #sm = proj.factory.simgr(thing=state, immutable=False)
+    sm = proj.factory.simgr(thing=state)
 
     sm.use_technique(VulnChecker(config['mem_corruption_fd'], config['input_pre_constraint'], config['input_values'],
                                  config['stop_found'], config['filter_fake_frees']))
