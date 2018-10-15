@@ -423,8 +423,9 @@ def trace(config_name, binary_name):
     allocator_name = os.path.basename(allocator_path)
 
     # Create project and disable sim_procedures for the libc
-    proj = angr.Project(binary_name, auto_load_libs=True, exclude_sim_procedures_func=use_sim_procedure,
-                        custom_ld_path=[os.path.dirname(allocator_path), os.path.dirname(libc_path)])
+    proj = angr.Project(binary_name, exclude_sim_procedures_func=use_sim_procedure,
+                        load_options={'ld_path':[os.path.dirname(allocator_path), os.path.dirname(libc_path)],
+                                              'auto_load_libs':True})
 
     # Find write_target
     write_target_var = proj.loader.main_object.get_symbol('write_target')
