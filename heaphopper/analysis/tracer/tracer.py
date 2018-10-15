@@ -572,7 +572,7 @@ def trace(config_name, binary_name):
         if heardEnter():
             debug = True
 
-    sm.move(from_stash='found', to_stash='vuln', filter_func=lambda p: p.state.heap.vulnerable)
+    sm.move(from_stash='found', to_stash='vuln', filter_func=lambda p: p.heap.vulnerable)
     found_paths.extend(sm.vuln)
 
     if config['spiller']:
@@ -580,13 +580,13 @@ def trace(config_name, binary_name):
 
     for path in found_paths:
         win_addr, heap_func = get_win_addr(proj, path.history.bbl_addrs.hardcopy)
-        path.state.heap.win_addr = win_addr
+        path.heap.win_addr = win_addr
         last_line = get_last_line(win_addr, binary_name)
-        path.state.heap.last_line = last_line
-        if path.state.heap.arb_write_info:
-            path.state.heap.arb_write_info['instr'] = proj.loader.shared_objects[
+        path.heap.last_line = last_line
+        if path.heap.arb_write_info:
+            path.heap.arb_write_info['instr'] = proj.loader.shared_objects[
                 allocator_name].addr_to_offset(
-                path.state.heap.arb_write_info['instr'])
+                path.heap.arb_write_info['instr'])
     logger.info('Found {} vulns'.format(len(found_paths)))
 
     if len(found_paths) > 0:
@@ -598,7 +598,7 @@ def trace(config_name, binary_name):
     return 0
 
 
-def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
+def store_vuln_descs(desc_file, states, var_dict, arb_writes):
     global DESC_HEADER, DESC_SECTION_LINE
     logger.info('Creating vuln descriptions'.format(desc_file))
     with open('{}.desc'.format(desc_file.split('.')[0]), 'r') as f:
@@ -615,8 +615,7 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
     bin_info['uafs'] -> list of use-after_frees
     '''
     descs = []
-    for path_num, path in enumerate(paths):
-        state = path.state
+    for state_num, state in enumerate(states):
         desc = []
         desc.append('{} {}'.format(DESC_HEADER, desc_file))
         desc.append('CONSTRAINTS:')
@@ -695,7 +694,7 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
                 desc.append('\t\t[{}] {}'.format(idx, hex(addr)))
         if state.heap.vuln_type == 'arbitrary_write_malloc':
             desc.append('\t- arbitrary write in malloc')
-            for idx, arb_write in enumerate(arb_writes[path_num]):
+            for idx, arb_write in enumerate(arb_writes[state_num]):
                 desc.append(
                     '\t\t{0:d}: Instr: 0x{1:x}; TargetAddr: 0x{2:x}; Val: 0x{3:x}'.format(idx,
                                                                                           arb_write['instr'] & 0xffffff,
@@ -703,7 +702,7 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
                                                                                           arb_write['val']))
         if state.heap.vuln_type == 'arbitrary_write_free':
             desc.append('\t- arbitrary write in free:')
-            for idx, arb_write in enumerate(arb_writes[path_num]):
+            for idx, arb_write in enumerate(arb_writes[state_num]):
                 desc.append(
                     '\t\t{0:d}: Instr: 0x{1:x}; TargetAddr: 0x{2:x}; Val: 0x{3:x}'.format(idx,
                                                                                           arb_write['instr'] & 0xffffff,
@@ -717,11 +716,11 @@ def store_vuln_descs(desc_file, paths, var_dict, arb_writes):
 
 
 # Store results as yaml-file
-def store_results(num_results, bin_file, paths, var_dict, fd):
+def store_results(num_results, bin_file, states, var_dict, fd):
     logger.info('Storing result infos to: {}.yaml'.format(bin_file))
     results = []
     arbitrary_writes = []
-    for i, path in enumerate(paths):
+    for i, state in enumerate(states):
         result = dict()
         result['file'] = bin_file
         result['path_id'] = i
@@ -733,19 +732,19 @@ def store_results(num_results, bin_file, paths, var_dict, fd):
         result['header_sizes'] = []
         result['overflow_sizes'] = []
         result['write_targets'] = []
-        result['mem2chunk_offset'] = path.state.solver.eval(path.state.memory.load(var_dict['mem2chunk_addr'], 8,
+        result['mem2chunk_offset'] = state.solver.eval(state.memory.load(var_dict['mem2chunk_addr'], 8,
                                                                                    endness='Iend_LE'))
-        result['stack_trace'] = path.state.heap.stack_trace
-        result['last_line'] = path.state.heap.last_line
-        result['heap_base'] = path.state.libc.heap_location
+        result['stack_trace'] = state.heap.stack_trace
+        result['last_line'] = state.heap.last_line
+        result['heap_base'] = state.libc.heap_location
         result['allocs'] = []
         result['arb_write_offsets'] = []
         result['bf_offsets'] = []
-        result['vuln_type'] = path.state.heap.vuln_type
+        result['vuln_type'] = state.heap.vuln_type
 
         arbitrary_write = []
 
-        processed_state = process_state(num_results, path.state, path.state.heap.vuln_state, var_dict, fd)
+        processed_state = process_state(num_results, state, state.heap.vuln_state, var_dict, fd)
 
         for input_opt, stdin_opt, svars, header, msizes, fsizes, osizes, wtargets, allocs, arb_offsets, bf_offsets, arb_write in processed_state:
             result['input_opts'].append(input_opt)
