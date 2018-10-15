@@ -131,7 +131,7 @@ Post processing states
 
 def process_state(num_results, state, write_state, var_dict, fd):
     processed_states = []
-    input_opts = state.solver.eval_upto(all_bytes(state.posix.fd[fd].read_storage), num_results, cast_to=str)
+    input_opts = state.solver.eval_upto(all_bytes(state.posix.fd[fd].read_storage), num_results, cast_to=bytes)
     for input_opt in input_opts:
         s = state.copy()
         write_s = write_state.copy()
@@ -144,7 +144,7 @@ def process_state(num_results, state, write_state, var_dict, fd):
             stdin_stream = stdin_bytes[0]
             for b in stdin_bytes[1:]:
                 stdin_stream = stdin_stream.concat(b)
-            stdin_opt = state.solver.eval(stdin_stream, cast_to=str)
+            stdin_opt = state.solver.eval(stdin_stream, cast_to=bytes)
             s.add_constraints(stdin_stream == stdin_opt)
             write_s.add_constraints(stdin_stream == stdin_opt)
         else:
