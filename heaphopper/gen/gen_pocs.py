@@ -240,10 +240,10 @@ def gen_poc(result, src_file, bin_file, last_line):
                 fsize_index = int(re.findall('fill_sizes\[(\d+)\]', for_line)[0])
                 prev_part = (0, 0x0)
                 for i in range(0, fsizes[fsize_index], 8):
-                    val = '0x' + stdin_opt[:8][::-1].encode('hex')
+                    val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
                     stdin_opt = stdin_opt[8:]
                     if len(stdin_opt) >= 8:
-                        next_part = int('0x' + stdin_opt[:8][::-1].encode('hex'), 16)
+                        next_part = int(b'0x' + binascii.hexlify(stdin_opt[:8][::-1]), 16)
                     else:
                         next_part = 0x0
                     sym_offset, prev_part = check_addr(int(val, 16), next_part, prev_part, main_bin, heap_base, allocs,
@@ -273,7 +273,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 poc_desc['uafs'] += 1
                 dst = re.findall(r'read\(.*, (ctrl_data_\d+.global_var),', line)[0]
                 for i in range(0, header, 8):
-                    val = '0x' + input_opt[:8][::-1].encode('hex')
+                    val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                     input_opt = input_opt[8:]
                     sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
                                                        'ctrl_data_{}.global_var'.format(dst), i)
@@ -283,7 +283,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 # arbitrary relative write
                 poc_desc['arb_relative_writes'] += 1
                 offset_dst = re.findall(r'read\(0, &(arw_offsets\[\d+\]),', line)[0]
-                val = '0x' + stdin_opt[:8][::-1].encode('hex')
+                val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
                 stdin_opt = stdin_opt[8:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
                                                    'arw_offsets', (poc_desc['arb_relative_writes'] - 1) * 8)
@@ -293,7 +293,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 line = next(iter_lines)  # get second read
                 read_dst = re.findall(r'read\(.*, (.*), .*\)', line)[0]
                 read_base, read_offset = read_dst.split('+')
-                val = '0x' + input_opt[:8][::-1].encode('hex')
+                val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                 input_opt = input_opt[8:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs, None, 0)
                 poc.append('{}{}[{}] = (uint64_t) {};'.format(space, read_base, read_offset, sym_offset))
@@ -302,7 +302,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 # single bitflip
                 poc_desc['single_bitflips'] += 1
                 offset_dst = re.findall(r'read\(0, &(bf_offsets\[\d+\]),', line)[0]
-                val = '0x' + stdin_opt[:8][::-1].encode('hex')
+                val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
                 stdin_opt = stdin_opt[8:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
                                                    'bf_offsets', (poc_desc['single_bitflips'] - 1) * 8)
@@ -311,7 +311,7 @@ def gen_poc(result, src_file, bin_file, last_line):
 
                 line = next(iter_lines)  # get second read
                 bit_dst = re.findall(r'read\(0, (bit_\d+), .*\)', line)[0]
-                val = '0x' + stdin_opt[:1].encode('hex')
+                val = b'0x' + binascii.hexlify(stdin_opt[:1])
                 stdin_opt = stdin_opt[1:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs, None, 0)
                 poc.append('{}{} = {};'.format(space, bit_dst, sym_offset))
@@ -330,10 +330,10 @@ def gen_poc(result, src_file, bin_file, last_line):
                 for i in range(0, new_size, 8):
                     if new_size - i < 8:
                         break
-                    val = '0x' + input_opt[:8][::-1].encode('hex')
+                    val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                     input_opt = input_opt[8:]
                     if len(input_opt) >= 8:
-                        next_part = int('0x' + input_opt[:8][::-1].encode('hex'), 16)
+                        next_part = int(b'0x' + binascii.hexlify(input_opt[:8][::-1]), 16)
                     else:
                         next_part = 0x0
                     sym_offset, prev_part = check_addr(int(val, 16), next_part, prev_part, main_bin, heap_base, allocs,
@@ -344,7 +344,7 @@ def gen_poc(result, src_file, bin_file, last_line):
 
                     # remainder
                     if new_size - (i + 8) < 8 and new_size - (i + 8) > 0:
-                        val = '0x' + input_opt[:new_size - (i + 8)][::-1].encode('hex')
+                        val = b'0x' + binascii.hexlify(input_opt[:new_size - (i + 8)][::-1])
                         bits = 2 ** int(ceil(log((len(val) - 2) * 4, 2)))
                         input_opt = input_opt[new_size - (i + 8):]
                         sym_offset, prev_part = check_addr(int(val, 16), 0x0, prev_part, main_bin, heap_base, allocs,
