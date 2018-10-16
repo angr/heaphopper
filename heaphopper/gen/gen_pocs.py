@@ -248,7 +248,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                         next_part = 0x0
                     sym_offset, prev_part = check_addr(int(val, 16), next_part, prev_part, main_bin, heap_base, allocs,
                                                        'ctrl_data_{}.global_var'.format(dst), i)
-                    curr_dst = 'ctrl_data_{}.global_var[{}]'.format(dst, (i / 8))
+                    curr_dst = 'ctrl_data_{}.global_var[{}]'.format(dst, (i // 8))
                     instr = '{}{} = (uint64_t) {};'.format(space, curr_dst, sym_offset)
                     if 'ctrl_data' in sym_offset:
                         idx = int(re.findall(r'ctrl_data_(\d+)', sym_offset)[0])
@@ -338,7 +338,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                         next_part = 0x0
                     sym_offset, prev_part = check_addr(int(val, 16), next_part, prev_part, main_bin, heap_base, allocs,
                                                        'ctrl_data_{}.global_var'.format(ctrl_data_index), -mem2chunk)
-                    curr_dst = '((uint64_t*) ({}))[{}]'.format(dst, (i / 8))
+                    curr_dst = '((uint64_t*) ({}))[{}]'.format(dst, (i // 8))
                     poc.append('{}{} = (uint64_t) {};'.format(space, curr_dst, sym_offset))
                     last_action_size += 1
 
