@@ -113,28 +113,29 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
         sym_prefix = '&'
 
     addr_clean = addr & ~0x7
-    for key, value in list(main_bin.symbols_by_addr.items()):
-        if sym == value.name:
+    for s in main_bin.symbols:
+
+        if sym == s.name:
             continue
-        if base + addr_clean >= key and base + addr_clean < key + value.size:
-            if value.name != 'write_target':
+        if base + addr_clean >= s.rebased_addr and base + addr_clean < s.rebased_addr + s.size:
+            if s.name != 'write_target':
                 for i in range(0, 0x40, 8):
-                    if key + i in main_bin.symbols_by_addr and main_bin.symbols_by_addr[key + i].name == 'write_target':
-                        key = key + i
-                        value = main_bin.symbols_by_addr[key]
+                    found_sym = main_bin.loader.find_symbol(s.rebased_addr + i)
+                    if found_sym and found_sym.name == 'write_target':
                         break
-            off = base + addr_clean - key
-            expr = '(uint64_t) ((((char *) &{}) - (char *) {}{}) - {}) + {}'.format(value.name, sym_prefix, sym, sym_off, off)
+
+            off = base + addr_clean - found_sym.rebased_addr
+            expr = '(uint64_t) ((((char *) &{}) - (char *) {}{}) - {}) + {}'.format(found_sym.name, sym_prefix, sym, sym_off, off)
             return expr, (0, 0x0)
-        elif base - addr_clean >= key and base - addr_clean < key + value.size:
-            if value.name != 'write_traget':
+        elif base - addr_clean >= s.rebased_addr and base - addr_clean < s.rebased_addr + s.size:
+            if s.name != 'write_traget':
                 for i in range(0, 0x40, 8):
-                    if key + i in main_bin.symbols_by_addr and main_bin.symbols_by_addr[key + i].name == 'write_target':
-                        key = key + i
-                        value = main_bin.symbols_by_addr[key]
+                    found_sym = main_bin.loader.find_symbol(s.rebased_addr + i)
+                    if found_sym and found_sym.name == 'write_target':
                         break
-            off = base - addr_clean - key
-            expr = '(uint64_t) ((((char *) {}{}) - (char *) &{}) + {}) - {}'.format(sym_prefix, sym, value.name, sym_off, off)
+
+            off = base - addr_clean - found_sym.rebased_addr
+            expr = '(uint64_t) ((((char *) {}{}) - (char *) &{}) + {}) - {}'.format(sym_prefix, sym, found_sym.name, sym_off, off)
             return expr, (0, 0x0)
 
     for idx, alloc in enumerate(allocs):
