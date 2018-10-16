@@ -205,7 +205,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 last_action_size += 2
             elif 'free(ctrl_data' in line:
                 poc.append(line)
-                dst = map(int, re.findall('ctrl_data_(\d+).global_var', line))[0]
+                dst = list(map(int, re.findall('ctrl_data_(\d+).global_var', line)))[0]
                 if dst in free_list:
                     poc_desc['double_frees'] += 1
                 else:
