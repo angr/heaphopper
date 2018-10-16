@@ -89,15 +89,15 @@ def verify_poc_single(poc_path, poc_type):
 
 
 def verify_non_heap(output):
-    heap_base = int(re.findall("Init printf: ([0-9a-fx]+)", output)[0], 0)
-    last_alloc = int(re.findall("Allocation: ([0-9a-fx]+)", output)[-1], 0)
+    heap_base = int(re.findall(b"Init printf: ([0-9a-fx]+)", output)[0], 0)
+    last_alloc = int(re.findall(b"Allocation: ([0-9a-fx]+)", output)[-1], 0)
     if last_alloc < heap_base:
         return True
     return False
 
 
 def verify_malloc_allocated(output):
-    allocs = [(int(f[0], 16), int(f[1], 16)) for f in re.findall("Allocation: ([0-9a-fx]+)\nSize: ([0-9a-fx]+)",
+    allocs = [(int(f[0], 16), int(f[1], 16)) for f in re.findall(b"Allocation: ([0-9a-fx]+)\nSize: ([0-9a-fx]+)",
                                                                     output)]
     for i, (a1, s1) in enumerate(allocs):
         for a2, s2 in allocs[i+1:]:
