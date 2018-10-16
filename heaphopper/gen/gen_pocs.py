@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+import binascii
 import re
 from hashlib import md5
 from math import log, ceil
@@ -31,7 +32,7 @@ def gen_dir(exploit_path, file_name, vuln, stack_trace):
     if stack_trace:
         m = md5()
         for addr in stack_trace:
-            m.update(str(addr))
+            m.update(str(addr).encode())
         dir_name = "{}/stack_trace_{}".format(dir_name, m.hexdigest())
         if not os.path.isdir(dir_name):
             os.mkdir(dir_name)
@@ -186,6 +187,10 @@ def gen_poc(result, src_file, bin_file, last_line):
             result['allocs'],
             result['arb_write_offsets'],
             result['bf_offsets']):
+
+        if type(input_opt) == str:
+            input_opt = bytes(input_opt, 'utf-8')
+
         poc = []
         poc_desc = dict(allocs=0, frees=0, overflows=0, fake_frees=0, double_frees=0, arb_relative_writes=0,
                         single_bitflips=0, uafs=0, constrained_target=False)
