@@ -111,15 +111,16 @@ def verify_malloc_allocated(output):
     return False
 
 def verify_arbitrary_write(output):
-    write_target = [(int(f[0], 0), int(f[1], 0)) for f in re.findall("write_target\[([0-9]+)\]: ([0-9a-fx]+)\n",
-                                                                          output)]
+    pre = dict()
+    for (i, a) in re.findall(b"write_target\[([0-9]+)\]: ([0-9a-fx]+|\(nil\))\n", output):
+        if a == b'(nil)':
+            a = '0x0'
 
-    size = len(write_target) / 2
-    pre = dict(write_target[:size])
-    post = dict(write_target[size:])
-    for x, y in zip(pre, post):
-        if x != y:
-            return True
+        if i not in pre:
+            pre[i] = int(a, 0)
+        else:
+            if pre[i] != int(a, 0):
+                return True
 
     return False
 
