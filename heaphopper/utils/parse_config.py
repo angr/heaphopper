@@ -5,7 +5,7 @@ def parse_config(config_file):
     if 'global_config' in config:
         with open(config['global_config']) as f:
             base = yaml.load(f)
-            for k, v in base.iteritems():
+            for k, v in base.items():
                 if k not in config:
                     config[k] = v
     # Insert parsing here if necessary

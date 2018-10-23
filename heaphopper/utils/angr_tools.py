@@ -17,7 +17,7 @@ def all_bytes(file):
     if type(file) == SimPacketsStream:
         # import IPython; IPython.embed()
         return file.content
-    indexes = file.mem.keys()
+    indexes = list(file.mem.keys())
     if len(indexes) == 0:
         return file.state.solver.BVV("")
     min_idx = min(indexes)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+import binascii
 import re
 from hashlib import md5
 from math import log, ceil
@@ -31,7 +32,7 @@ def gen_dir(exploit_path, file_name, vuln, stack_trace):
     if stack_trace:
         m = md5()
         for addr in stack_trace:
-            m.update(str(addr))
+            m.update(str(addr).encode())
         dir_name = "{}/stack_trace_{}".format(dir_name, m.hexdigest())
         if not os.path.isdir(dir_name):
             os.mkdir(dir_name)
@@ -113,28 +114,29 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
         sym_prefix = '&'
 
     addr_clean = addr & ~0x7
-    for key, value in main_bin.symbols_by_addr.items():
-        if sym == value.name:
+    for s in main_bin.symbols:
+
+        if sym == s.name:
             continue
-        if base + addr_clean >= key and base + addr_clean < key + value.size:
-            if value.name != 'write_target':
+        if base + addr_clean >= s.rebased_addr and base + addr_clean < s.rebased_addr + s.size:
+            if s.name != 'write_target':
                 for i in range(0, 0x40, 8):
-                    if key + i in main_bin.symbols_by_addr and main_bin.symbols_by_addr[key + i].name == 'write_target':
-                        key = key + i
-                        value = main_bin.symbols_by_addr[key]
+                    found_sym = main_bin.loader.find_symbol(s.rebased_addr + i)
+                    if found_sym and found_sym.name == 'write_target':
                         break
-            off = base + addr_clean - key
-            expr = '(uint64_t) ((((char *) &{}) - (char *) {}{}) - {}) + {}'.format(value.name, sym_prefix, sym, sym_off, off)
+
+            off = base + addr_clean - found_sym.rebased_addr
+            expr = '(uint64_t) ((((char *) &{}) - (char *) {}{}) - {}) + {}'.format(found_sym.name, sym_prefix, sym, sym_off, off)
             return expr, (0, 0x0)
-        elif base - addr_clean >= key and base - addr_clean < key + value.size:
-            if value.name != 'write_traget':
+        elif base - addr_clean >= s.rebased_addr and base - addr_clean < s.rebased_addr + s.size:
+            if s.name != 'write_traget':
                 for i in range(0, 0x40, 8):
-                    if key + i in main_bin.symbols_by_addr and main_bin.symbols_by_addr[key + i].name == 'write_target':
-                        key = key + i
-                        value = main_bin.symbols_by_addr[key]
+                    found_sym = main_bin.loader.find_symbol(s.rebased_addr + i)
+                    if found_sym and found_sym.name == 'write_target':
                         break
-            off = base - addr_clean - key
-            expr = '(uint64_t) ((((char *) {}{}) - (char *) &{}) + {}) - {}'.format(sym_prefix, sym, value.name, sym_off, off)
+
+            off = base - addr_clean - found_sym.rebased_addr
+            expr = '(uint64_t) ((((char *) {}{}) - (char *) &{}) + {}) - {}'.format(sym_prefix, sym, found_sym.name, sym_off, off)
             return expr, (0, 0x0)
 
     for idx, alloc in enumerate(allocs):
@@ -185,6 +187,10 @@ def gen_poc(result, src_file, bin_file, last_line):
             result['allocs'],
             result['arb_write_offsets'],
             result['bf_offsets']):
+
+        if type(input_opt) == str:
+            input_opt = bytes(input_opt, 'utf-8')
+
         poc = []
         poc_desc = dict(allocs=0, frees=0, overflows=0, fake_frees=0, double_frees=0, arb_relative_writes=0,
                         single_bitflips=0, uafs=0, constrained_target=False)
@@ -199,7 +205,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 last_action_size += 2
             elif 'free(ctrl_data' in line:
                 poc.append(line)
-                dst = map(int, re.findall('ctrl_data_(\d+).global_var', line))[0]
+                dst = list(map(int, re.findall('ctrl_data_(\d+).global_var', line)))[0]
                 if dst in free_list:
                     poc_desc['double_frees'] += 1
                 else:
@@ -217,8 +223,8 @@ def gen_poc(result, src_file, bin_file, last_line):
             elif ' = malloc(malloc_sizes' in line:  # allocation
                 last_action_size += 2
                 poc_desc['allocs'] += 1
-                dst, msize_index = map(int, re.findall('ctrl_data_(\d+).global_var = malloc\(malloc_sizes\[(\d+)\]\);',
-                                                       line)[0])
+                dst, msize_index = list(map(int, re.findall('ctrl_data_(\d+).global_var = malloc\(malloc_sizes\[(\d+)\]\);',
+                                                       line)[0]))
                 poc.append(line)
                 poc.append(
                     ('{}#if print\n{}\tprintf("Allocation: %p\\nSize: 0x%lx\\n",'
@@ -229,25 +235,25 @@ def gen_poc(result, src_file, bin_file, last_line):
                         msize_index,
                         space))
                 try:
-                    for_line = iter_lines.next()  # get for
-                    iter_lines.next()  # get read
-                    iter_lines.next()  # get curly brace
+                    for_line = next(iter_lines)  # get for
+                    next(iter_lines)  # get read
+                    next(iter_lines)  # get curly brace
                 except StopIteration:
                     continue
                 if not len(stdin_opt):
                     continue
                 fsize_index = int(re.findall('fill_sizes\[(\d+)\]', for_line)[0])
                 prev_part = (0, 0x0)
-                for i in xrange(0, fsizes[fsize_index], 8):
-                    val = '0x' + stdin_opt[:8][::-1].encode('hex')
+                for i in range(0, fsizes[fsize_index], 8):
+                    val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
                     stdin_opt = stdin_opt[8:]
                     if len(stdin_opt) >= 8:
-                        next_part = int('0x' + stdin_opt[:8][::-1].encode('hex'), 16)
+                        next_part = int(b'0x' + binascii.hexlify(stdin_opt[:8][::-1]), 16)
                     else:
                         next_part = 0x0
                     sym_offset, prev_part = check_addr(int(val, 16), next_part, prev_part, main_bin, heap_base, allocs,
                                                        'ctrl_data_{}.global_var'.format(dst), i)
-                    curr_dst = 'ctrl_data_{}.global_var[{}]'.format(dst, (i / 8))
+                    curr_dst = 'ctrl_data_{}.global_var[{}]'.format(dst, (i // 8))
                     instr = '{}{} = (uint64_t) {};'.format(space, curr_dst, sym_offset)
                     if 'ctrl_data' in sym_offset:
                         idx = int(re.findall(r'ctrl_data_(\d+)', sym_offset)[0])
@@ -272,7 +278,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 poc_desc['uafs'] += 1
                 dst = re.findall(r'read\(.*, (ctrl_data_\d+.global_var),', line)[0]
                 for i in range(0, header, 8):
-                    val = '0x' + input_opt[:8][::-1].encode('hex')
+                    val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                     input_opt = input_opt[8:]
                     sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
                                                        'ctrl_data_{}.global_var'.format(dst), i)
@@ -282,17 +288,17 @@ def gen_poc(result, src_file, bin_file, last_line):
                 # arbitrary relative write
                 poc_desc['arb_relative_writes'] += 1
                 offset_dst = re.findall(r'read\(0, &(arw_offsets\[\d+\]),', line)[0]
-                val = '0x' + stdin_opt[:8][::-1].encode('hex')
+                val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
                 stdin_opt = stdin_opt[8:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
                                                    'arw_offsets', (poc_desc['arb_relative_writes'] - 1) * 8)
                 poc.append('{}{} = {};'.format(space, offset_dst, sym_offset))
                 last_action_size += 1
 
-                line = iter_lines.next()  # get second read
+                line = next(iter_lines)  # get second read
                 read_dst = re.findall(r'read\(.*, (.*), .*\)', line)[0]
                 read_base, read_offset = read_dst.split('+')
-                val = '0x' + input_opt[:8][::-1].encode('hex')
+                val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                 input_opt = input_opt[8:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs, None, 0)
                 poc.append('{}{}[{}] = (uint64_t) {};'.format(space, read_base, read_offset, sym_offset))
@@ -301,16 +307,16 @@ def gen_poc(result, src_file, bin_file, last_line):
                 # single bitflip
                 poc_desc['single_bitflips'] += 1
                 offset_dst = re.findall(r'read\(0, &(bf_offsets\[\d+\]),', line)[0]
-                val = '0x' + stdin_opt[:8][::-1].encode('hex')
+                val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
                 stdin_opt = stdin_opt[8:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
                                                    'bf_offsets', (poc_desc['single_bitflips'] - 1) * 8)
                 poc.append('{}{} = {};'.format(space, offset_dst, sym_offset))
                 last_action_size += 1
 
-                line = iter_lines.next()  # get second read
+                line = next(iter_lines)  # get second read
                 bit_dst = re.findall(r'read\(0, (bit_\d+), .*\)', line)[0]
-                val = '0x' + stdin_opt[:1].encode('hex')
+                val = b'0x' + binascii.hexlify(stdin_opt[:1])
                 stdin_opt = stdin_opt[1:]
                 sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs, None, 0)
                 poc.append('{}{} = {};'.format(space, bit_dst, sym_offset))
@@ -326,24 +332,24 @@ def gen_poc(result, src_file, bin_file, last_line):
 
                 new_size = osizes[index]
                 prev_part = (0, 0x0)
-                for i in xrange(0, new_size, 8):
+                for i in range(0, new_size, 8):
                     if new_size - i < 8:
                         break
-                    val = '0x' + input_opt[:8][::-1].encode('hex')
+                    val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                     input_opt = input_opt[8:]
                     if len(input_opt) >= 8:
-                        next_part = int('0x' + input_opt[:8][::-1].encode('hex'), 16)
+                        next_part = int(b'0x' + binascii.hexlify(input_opt[:8][::-1]), 16)
                     else:
                         next_part = 0x0
                     sym_offset, prev_part = check_addr(int(val, 16), next_part, prev_part, main_bin, heap_base, allocs,
                                                        'ctrl_data_{}.global_var'.format(ctrl_data_index), -mem2chunk)
-                    curr_dst = '((uint64_t*) ({}))[{}]'.format(dst, (i / 8))
+                    curr_dst = '((uint64_t*) ({}))[{}]'.format(dst, (i // 8))
                     poc.append('{}{} = (uint64_t) {};'.format(space, curr_dst, sym_offset))
                     last_action_size += 1
 
                     # remainder
                     if new_size - (i + 8) < 8 and new_size - (i + 8) > 0:
-                        val = '0x' + input_opt[:new_size - (i + 8)][::-1].encode('hex')
+                        val = b'0x' + binascii.hexlify(input_opt[:new_size - (i + 8)][::-1])
                         bits = 2 ** int(ceil(log((len(val) - 2) * 4, 2)))
                         input_opt = input_opt[new_size - (i + 8):]
                         sym_offset, prev_part = check_addr(int(val, 16), 0x0, prev_part, main_bin, heap_base, allocs,

@@ -24,7 +24,7 @@ def store_results(results_dict):
     total_time = 0
     with open(fn, 'w') as f:
         f.write('Timing results for test run from {}\n\n'.format(dt))
-        for dir in results_dict.iterkeys():
+        for dir in results_dict.keys():
             f.write('[{}]{}: {} s\n'.format('OK' if results_dict[dir]['worked'] else 'FAILED', dir,
                                             results_dict[dir]['ts']))
             total_time += results_dict[dir]['ts']
@@ -37,8 +37,8 @@ def run_single(folder_name, analysis_name, binary_name):
         call(['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
               '-b', '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR), stdout=DEVNULL, stderr=STDOUT)
     else:
-        print check_output(['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
-         '-b', '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR))
+        print(check_output(['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name),
+         '-b', '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR)))
     ts = time.time() - start
     return ts
 
@@ -56,20 +56,20 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
         try:
             check_call(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL)
         except CalledProcessError as e:
-            print e.output
+            print(e.output)
             return False
 
     else:
-        print check_output(['python', 'heaphopper.py', 'poc',
+        print(check_output(['python', 'heaphopper.py', 'poc',
                             '-c', '{}/{}'.format(folder_name, analysis_name),
                             '-b', '{}/{}'.format(folder_name, binary_name),
                             '-r', '{}'.format(result_name),
                             '-d', '{}'.format(desc_name),
-                            '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR))
+                            '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR)))
 
         poc_path = glob.glob(poc_path)[0]
 
-        print check_output(['make', '-C', poc_path, 'pocs-print'])
+        print(check_output(['make', '-C', poc_path, 'pocs-print']))
 
     return True
 
@@ -78,7 +78,7 @@ def verify_poc_single(poc_path, poc_type):
     output = check_output(['{}/run_poc.sh'.format(BASE_DIR), poc_bin], cwd='{}'.format(BASE_DIR))
 
     if VERBOSE:
-        print output
+        print(output)
 
     if poc_type == 'malloc_non_heap':
         return verify_non_heap(output)
@@ -89,16 +89,16 @@ def verify_poc_single(poc_path, poc_type):
 
 
 def verify_non_heap(output):
-    heap_base = int(re.findall("Init printf: ([0-9a-fx]+)", output)[0], 0)
-    last_alloc = int(re.findall("Allocation: ([0-9a-fx]+)", output)[-1], 0)
+    heap_base = int(re.findall(b"Init printf: ([0-9a-fx]+)", output)[0], 0)
+    last_alloc = int(re.findall(b"Allocation: ([0-9a-fx]+)", output)[-1], 0)
     if last_alloc < heap_base:
         return True
     return False
 
 
 def verify_malloc_allocated(output):
-    allocs = map(lambda f: (int(f[0], 16), int(f[1], 16)), re.findall("Allocation: ([0-9a-fx]+)\nSize: ([0-9a-fx]+)",
-                                                                    output))
+    allocs = [(int(f[0], 16), int(f[1], 16)) for f in re.findall(b"Allocation: ([0-9a-fx]+)\nSize: ([0-9a-fx]+)",
+                                                                    output)]
     for i, (a1, s1) in enumerate(allocs):
         for a2, s2 in allocs[i+1:]:
             if a1 == a2:
@@ -111,22 +111,23 @@ def verify_malloc_allocated(output):
     return False
 
 def verify_arbitrary_write(output):
-    write_target = map(lambda f: (int(f[0], 0), int(f[1], 0)), re.findall("write_target\[([0-9]+)\]: ([0-9a-fx]+)\n",
-                                                                          output))
+    pre = dict()
+    for (i, a) in re.findall(b"write_target\[([0-9]+)\]: ([0-9a-fx]+|\(nil\))\n", output):
+        if a == b'(nil)':
+            a = '0x0'
 
-    size = len(write_target) / 2
-    pre = dict(write_target[:size])
-    post = dict(write_target[size:])
-    for x, y in zip(pre, post):
-        if x != y:
-            return True
+        if i not in pre:
+            pre[i] = int(a, 0)
+        else:
+            if pre[i] != int(a, 0):
+                return True
 
     return False
 
 def test_01_make():
     output = check_output(['make', '-C', BASE_DIR])
     if VERBOSE:
-        print output
+        print(output)
 
 
 def test_02_fastbin_dup():
@@ -301,7 +302,7 @@ def test_06_unsorted_bin_attack():
 
 def run_all():
     functions = globals()
-    all_functions = dict(filter((lambda (k, v): k.startswith('test_')), functions.items()))
+    all_functions = dict(list(filter((lambda k_v: k_v[0].startswith('test_')), list(functions.items()))))
     for f in sorted(all_functions.keys()):
         if hasattr(all_functions[f], '__call__'):
             all_functions[f]()

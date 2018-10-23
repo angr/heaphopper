@@ -104,7 +104,7 @@ def arb_write_offsets(count):
 
 def ctrled_data(count):
     cdata = []
-    for i in xrange(count):
+    for i in range(count):
         cdata.append('controlled_data __attribute__((aligned(16))) ctrl_data_{};'.format(i))
 
     return '\n'.join(cdata)
@@ -269,7 +269,7 @@ FD = None
 # oh boy this is dirty
 def build_actions(zoo_actions, depth):
     global ACTIONS
-    ACTIONS = filter(lambda a: a[0] in zoo_actions.keys(), ACTIONS)
+    ACTIONS = [a for a in ACTIONS if a[0] in list(zoo_actions.keys())]
     action_counts = {}
     final_actions = []
     for action in ACTIONS:
@@ -297,8 +297,8 @@ def gen_variants(config, action_counts):
                    'bitflip_cnt': 0}
     total_count = add_variants(v, d, variants, descs, config['zoo_depth'], [], [], vuln_states,
                                action_counts)  # depth is 0-based
-    print "Depth: {}".format(config['zoo_depth'])
-    print "Total number of permutations: {}".format(total_count)
+    print("Depth: {}".format(config['zoo_depth']))
+    print("Total number of permutations: {}".format(total_count))
     return variants, descs
 
 
@@ -582,7 +582,7 @@ def create_descriptions(zoo_dir, descs, fnames):
 
 
 def usage(argv):
-    print 'Usage: {} <zoo_dir> <depth>'.format(argv[0])
+    print('Usage: {} <zoo_dir> <depth>'.format(argv[0]))
 
 
 def gen_zoo(config_file):
@@ -590,7 +590,7 @@ def gen_zoo(config_file):
     config = parse_config(config_file)
     action_count = build_actions(config['zoo_actions'], config['zoo_depth'])
     variants, descs = gen_variants(config, action_count)
-    print 'Variants: {}'.format(len(variants))
+    print('Variants: {}'.format(len(variants)))
     if not config['create_files'] or not len(variants):
         return
     fnames = write_files(config, variants)

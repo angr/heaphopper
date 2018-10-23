@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('action', metavar='<identify|gen|trace|poc>', type=str,
                         choices=['identify', 'trace', 'gen', 'poc'],
                         help='Identify bins or trace for vulns')
-    parser.add_argument('-c', '--config', metavar='analysis.yaml', type=file,
+    parser.add_argument('-c', '--config', metavar='analysis.yaml', type=open,
                         help='Path to config file in yaml-format')
     parser.add_argument('-b', '--binary', metavar='binary_path', type=str,
                         help='Path to the binary to be traced')
