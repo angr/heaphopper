@@ -7,8 +7,8 @@ import datetime
 from subprocess import call, check_call, check_output, STDOUT, CalledProcessError
 import glob
 import nose
+from flaky import flaky
 import sys
-
 
 DEVNULL = open(os.devnull, 'wb', 0)
 
@@ -130,6 +130,7 @@ def test_01_make():
         print(output)
 
 
+@flaky()
 def test_02_fastbin_dup():
         TIME=25
         info = dict(folder_name='how2heap_fastbin_dup', conf='analysis.yaml', bin_name='fastbin_dup.bin', type='malloc_non_heap')
@@ -152,6 +153,7 @@ def test_02_fastbin_dup():
         poc_worked = verify_poc_single(poc_path, info['type'])
         nose.tools.assert_true(poc_worked)
 
+@flaky()
 def test_03_house_of_lore():
         TIME=90
         info = dict(folder_name='how2heap_house_of_lore', conf='analysis.yaml', bin_name='house_of_lore.bin', type='malloc_non_heap')
