@@ -523,8 +523,8 @@ def trace(config_name, binary_name):
     sm.use_technique(angr.exploration_techniques.Explorer(find=(var_dict['winning_addr'],), avoid=avoids))
 
     # Create fd for memory corruption input
-    name = 'memory_corruption'
-    path = '/tmp/%s' % name
+    name = b'memory_corruption'
+    path = b'/tmp/%s' % name
     mem_corr_fd = config['mem_corruption_fd']
     # backing = SimSymbolicMemory(memory_id='file_%s' % name)
     # backing.set_state(state)
