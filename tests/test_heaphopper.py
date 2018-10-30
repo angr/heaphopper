@@ -125,6 +125,9 @@ def verify_arbitrary_write(output):
     return False
 
 def test_01_make():
+    output = check_output(['make', '-C', BASE_DIR, 'clean'])
+    if VERBOSE:
+        print(output)
     output = check_output(['make', '-C', BASE_DIR])
     if VERBOSE:
         print(output)

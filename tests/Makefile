@@ -23,4 +23,7 @@ all: $(BINS)
 	$(CC) -L. -o $@ $^ $(LDFLAGS) -lc
 
 clean:
+	rm -rf $(OBJECTS) $(RESULTS) $(DESCS) $(POCS)
+
+distclean:
 	rm -rf $(BINS) $(OBJECTS) $(RESULTS) $(DESCS) $(POCS)
