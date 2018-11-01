@@ -35,16 +35,16 @@ int main(void){
 	free(dummy_chunk);
 
 	// Allocation
-    //ctrl_data_0.global_var = malloc(400);
-    ctrl_data_0.global_var = malloc(malloc_sizes[0]);
-    for (int i=0; i < fill_sizes[0]; i+=8) {
+	//ctrl_data_0.global_var = malloc(400);
+	ctrl_data_0.global_var = malloc(malloc_sizes[0]);
+	for (int i=0; i < fill_sizes[0]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_0.global_var)+i, 8);
 	}
 
 	// Allocation
-    //ctrl_data_1.global_var = malloc(400);
-    ctrl_data_1.global_var = malloc(malloc_sizes[1]);
-    for (int i=0; i < fill_sizes[1]; i+=8) {
+	//ctrl_data_1.global_var = malloc(400);
+	ctrl_data_1.global_var = malloc(malloc_sizes[1]);
+	for (int i=0; i < fill_sizes[1]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_1.global_var)+i, 8);
 	}
 
@@ -57,9 +57,9 @@ int main(void){
 	//ctrl_data_0.global_var[1] = &write_target;
 
 	// Allocation
-    //ctrl_data_2.global_var = malloc(400);
-    ctrl_data_1.global_var = malloc(malloc_sizes[2]);
-    for (int i=0; i < fill_sizes[2]; i+=8) {
+	//ctrl_data_2.global_var = malloc(400);
+	ctrl_data_1.global_var = malloc(malloc_sizes[2]);
+	for (int i=0; i < fill_sizes[2]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_2.global_var)+i, 8);
 	}
 	winning();

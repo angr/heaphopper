@@ -15,7 +15,7 @@ sym_data_size: 0x0
 # Specify the number of actions in one zoo case
 zoo_depth: 7
 # Specify the zoo actions out of (malloc, free, overflow, uaf, fake_free, double_free, single_bitflip, arb_relative_write)
-zoo_actions: {malloc: -1, free: -1, overflow: 1}
+zoo_actions: {malloc: -1, free: -1, uaf: 1}
 # Specify the location to store your zoo
 zoo_dir: /tmp/zoo_dir
 # Enable additional malloc hardening for glibc (disable, enable, pedantic)

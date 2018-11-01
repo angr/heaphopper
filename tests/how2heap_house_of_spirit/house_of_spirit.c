@@ -34,19 +34,19 @@ int main(void) {
 	void *dummy_chunk = malloc(0x200);
 	free(dummy_chunk);
 
-    //sym_data_0.data[0x0] = 0x0;
-    //sym_data.data[0x1] = 0x20;
-    //sym_data.data[0x1] = malloc_sizes[0] + 0x10;
-    //sym_data_0.data[0x9] = 0x1234;
+	//sym_data_0.data[0x0] = 0x0;
+	//sym_data.data[0x1] = 0x20;
+	//sym_data.data[0x1] = malloc_sizes[0] + 0x10;
+	//sym_data_0.data[0x9] = 0x1234;
 
-    // VULN: Fake_free
+	// VULN: Fake_free
 	free(((uint8_t *) &sym_data.data) + mem2chunk_offset);
 
 	// Allocation
-    ctrl_data_0.global_var = malloc(malloc_sizes[0]);
-    for (int i=0; i < fill_sizes[0]; i+=8) {
+	ctrl_data_0.global_var = malloc(malloc_sizes[0]);
+	for (int i=0; i < fill_sizes[0]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_0.global_var)+i, 8);
 	}
 
-    winning();
+	winning();
 }

@@ -34,26 +34,26 @@ int main(void) {
 	free(dummy_chunk);
 
 	// Allocation
-    //ctrl_data_0.global_var = malloc(0x80);
-    ctrl_data_0.global_var = malloc(malloc_sizes[0]);
-    for (int i=0; i < fill_sizes[0]; i+=8) {
+	//ctrl_data_0.global_var = malloc(0x80);
+	ctrl_data_0.global_var = malloc(malloc_sizes[0]);
+	for (int i=0; i < fill_sizes[0]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_0.global_var)+i, 8);
 	}
 
 	// Allocation
-    //ctrl_data_1.global_var = malloc(0x80);
-    ctrl_data_1.global_var = malloc(malloc_sizes[1]);
-    for (int i=0; i < fill_sizes[1]; i+=8) {
+	//ctrl_data_1.global_var = malloc(0x80);
+	ctrl_data_1.global_var = malloc(malloc_sizes[1]);
+	for (int i=0; i < fill_sizes[1]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_1.global_var)+i, 8);
 	}
 
-    // VULN: Overflow
-    offset = mem2chunk_offset;
-    read(3, ((char *) ctrl_data_1.global_var)-offset, overflow_sizes[0]);
+	// VULN: Overflow
+	offset = mem2chunk_offset;
+	read(3, ((char *) ctrl_data_1.global_var)-offset, overflow_sizes[0]);
 
 	free(ctrl_data_1.global_var);
 
-    winning();
+	winning();
 }
 
 
