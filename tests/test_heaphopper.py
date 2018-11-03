@@ -243,7 +243,7 @@ def test_06_unsorted_bin_attack():
 
 #def test_07_unsafe_unlink():
 #        TIME=500
-#        info = dict(folder_name='how2heap_unsafe_unlink', conf='analysis.yaml', bin_name='unsorted_bin_attack.bin', type='arbitrary_write_free')
+#        info = dict(folder_name='how2heap_unsafe_unlink', conf='analysis.yaml', bin_name='unsafe_unlink.bin', type='arbitrary_write_free')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
