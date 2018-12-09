@@ -717,7 +717,7 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
 
 # Store results as yaml-file
 def store_results(num_results, bin_file, states, var_dict, fd):
-    logger.info('Storing result infos to: {}.yaml'.format(bin_file))
+    logger.info('Storing result infos to: {}-result.yaml'.format(bin_file))
     results = []
     arbitrary_writes = []
     for i, state in enumerate(states):
