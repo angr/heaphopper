@@ -600,7 +600,7 @@ def trace(config_name, binary_name):
 
 def store_vuln_descs(desc_file, states, var_dict, arb_writes):
     global DESC_HEADER, DESC_SECTION_LINE
-    logger.info('Creating vuln descriptions'.format(desc_file))
+    logger.info('Creating vuln descriptions: {}-desc.yaml'.format(desc_file))
     with open('{}.desc'.format(desc_file.split('.')[0]), 'r') as f:
         bin_info = yaml.load(f)
     '''
