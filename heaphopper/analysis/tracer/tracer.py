@@ -152,8 +152,8 @@ def process_state(num_results, state, write_state, var_dict, fd):
 
         svars = []
         # check if we have a saved-state for the sym_data memory
-        if 'sym_data_ptr' in var_dict and s.heap.sym_data_states[var_dict['sym_data_ptr']]:
-            sym_s = s.heap.sym_data_states[var_dict['sym_data_ptr']].copy()
+        if 'sym_data_ptr' in var_dict and s.heaphopper.sym_data_states[var_dict['sym_data_ptr']]:
+            sym_s = s.heaphopper.sym_data_states[var_dict['sym_data_ptr']].copy()
             sym_s.add_constraints(all_bytes(sym_s.posix.fd[fd].read_storage) == input_opt)
             if stdin_opt:
                 sym_s.add_constraints(stdin_stream == stdin_opt)
@@ -230,8 +230,8 @@ def process_state(num_results, state, write_state, var_dict, fd):
             write_s.add_constraints(bf_offset == sol)
 
         arb_write = {}
-        if s.heap.arb_write_info:
-            arb_write = {k: s.solver.eval(v) for k, v in list(s.heap.arb_write_info.items())}
+        if s.heaphopper.arb_write_info:
+            arb_write = {k: s.solver.eval(v) for k, v in list(s.heaphopper.arb_write_info.items())}
 
         processed_states.append(
             (input_opt, stdin_opt, svars, header, msizes, fsizes, osizes, wt_mem, allocs, arb_offsets,
@@ -286,9 +286,9 @@ def setup_state(state, proj, config):
 
         # create entry in sym_data state storage
         var_dict['sym_data_ptr'] = sdata_var.rebased_addr + config['mem2chunk_offset']
-        state.heap.sym_data_states[var_dict['sym_data_ptr']] = None
+        state.heaphopper.sym_data_states[var_dict['sym_data_ptr']] = None
         # add sym_data_size to heap state
-        state.heap.sym_data_size = config['sym_data_size']
+        state.heaphopper.sym_data_size = config['sym_data_size']
         # add global_ptr to global_vars:
         var_dict['global_vars'].append(sdata_var.rebased_addr)
 
@@ -451,11 +451,11 @@ def trace(config_name, binary_name):
     removed_options.add(angr.options.LAZY_SOLVES)
 
     state = proj.factory.entry_state(add_options=added_options, remove_options=removed_options)
-    state.register_plugin('heap', HeapConditionTracker(config=config,
+    state.register_plugin('heaphopper', HeapConditionTracker(config=config,
                                                        wtarget=(write_target_var.rebased_addr,
                                                                 write_target_var.size),
                                                        libc=libc, allocator=allocator))
-    state.heap.set_level(config['log_level'])
+    state.heaphopper.set_level(config['log_level'])
 
     if config['fix_loader_problem']:
         loader_name = os.path.basename(config['loader'])
@@ -572,7 +572,7 @@ def trace(config_name, binary_name):
         if heardEnter():
             debug = True
 
-    sm.move(from_stash='found', to_stash='vuln', filter_func=lambda p: p.heap.vulnerable)
+    sm.move(from_stash='found', to_stash='vuln', filter_func=lambda p: p.heaphopper.vulnerable)
     found_paths.extend(sm.vuln)
 
     if config['spiller']:
@@ -580,13 +580,13 @@ def trace(config_name, binary_name):
 
     for path in found_paths:
         win_addr, heap_func = get_win_addr(proj, path.history.bbl_addrs.hardcopy)
-        path.heap.win_addr = win_addr
+        path.heaphopper.win_addr = win_addr
         last_line = get_last_line(win_addr, binary_name)
-        path.heap.last_line = last_line
-        if path.heap.arb_write_info:
-            path.heap.arb_write_info['instr'] = proj.loader.shared_objects[
+        path.heaphopper.last_line = last_line
+        if path.heaphopper.arb_write_info:
+            path.heaphopper.arb_write_info['instr'] = proj.loader.shared_objects[
                 allocator_name].addr_to_offset(
-                path.heap.arb_write_info['instr'])
+                path.heaphopper.arb_write_info['instr'])
     logger.info('Found {} vulns'.format(len(found_paths)))
 
     if len(found_paths) > 0:
@@ -638,8 +638,8 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
         desc.append('\t- {} bad_frees:'.format(len(bin_info['fake_frees'])))
         for fake_free in bin_info['fake_frees']:
             desc.append('\t\t* free of fake_chunk {}'.format(fake_free))
-        if state.heap.double_free:
-            desc.append('\t- {} double free(s)'.format(len(state.heap.double_free)))
+        if state.heaphopper.double_free:
+            desc.append('\t- {} double free(s)'.format(len(state.heaphopper.double_free)))
         # show arbitrary relative writes
         desc.append('\t- {} arb_relative_writes:'.format(len(bin_info['arb_relative_writes'])))
         for dst, offset in bin_info['arb_relative_writes']:
@@ -683,16 +683,16 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
 
         desc.append('\n\nRESULT:')
         desc.append(DESC_SECTION_LINE)
-        if state.heap.vuln_type == 'malloc_non_heap':
+        if state.heaphopper.vuln_type == 'malloc_non_heap':
             desc.append('\t- malloc returns a pointer to non-heap segment')
-        if state.heap.vuln_type == 'malloc_allocated':
+        if state.heaphopper.vuln_type == 'malloc_allocated':
             desc.append('\t- malloc returns a pointer to an already allocated heap region')
             # IPython.embed()
-        if state.heap.stack_trace:
+        if state.heaphopper.stack_trace:
             desc.append('\t- arbitrary write stack_trace:')
-            for idx, addr in enumerate(state.heap.stack_trace):
+            for idx, addr in enumerate(state.heaphopper.stack_trace):
                 desc.append('\t\t[{}] {}'.format(idx, hex(addr)))
-        if state.heap.vuln_type == 'arbitrary_write_malloc':
+        if state.heaphopper.vuln_type == 'arbitrary_write_malloc':
             desc.append('\t- arbitrary write in malloc')
             for idx, arb_write in enumerate(arb_writes[state_num]):
                 desc.append(
@@ -700,7 +700,7 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
                                                                                           arb_write['instr'] & 0xffffff,
                                                                                           arb_write['addr'],
                                                                                           arb_write['val']))
-        if state.heap.vuln_type == 'arbitrary_write_free':
+        if state.heaphopper.vuln_type == 'arbitrary_write_free':
             desc.append('\t- arbitrary write in free:')
             for idx, arb_write in enumerate(arb_writes[state_num]):
                 desc.append(
@@ -734,17 +734,17 @@ def store_results(num_results, bin_file, states, var_dict, fd):
         result['write_targets'] = []
         result['mem2chunk_offset'] = state.solver.eval(state.memory.load(var_dict['mem2chunk_addr'], 8,
                                                                                    endness='Iend_LE'))
-        result['stack_trace'] = state.heap.stack_trace
-        result['last_line'] = state.heap.last_line
+        result['stack_trace'] = state.heaphopper.stack_trace
+        result['last_line'] = state.heaphopper.last_line
         result['heap_base'] = state.libc.heap_location
         result['allocs'] = []
         result['arb_write_offsets'] = []
         result['bf_offsets'] = []
-        result['vuln_type'] = state.heap.vuln_type
+        result['vuln_type'] = state.heaphopper.vuln_type
 
         arbitrary_write = []
 
-        processed_state = process_state(num_results, state, state.heap.vuln_state, var_dict, fd)
+        processed_state = process_state(num_results, state, state.heaphopper.vuln_state, var_dict, fd)
 
         for input_opt, stdin_opt, svars, header, msizes, fsizes, osizes, wtargets, allocs, arb_offsets, bf_offsets, arb_write in processed_state:
             result['input_opts'].append(input_opt)

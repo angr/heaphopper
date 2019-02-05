@@ -103,35 +103,35 @@ class MallocInspect(SimProcedure):
 
     def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None):
         if 'arb_write' in vulns:
-            self.state.heap.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
+            self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
                                                             action=check_write))
-        self.state.heap.req_size = size
+        self.state.heaphopper.req_size = size
         self.call(malloc_addr, (size,), 'check_malloc')
 
     def check_malloc(self, size, malloc_addr, vulns=None, ctrl_data=None): #pylint:disable=unused-argument
         # Clear breakpoints
-        for bp in self.state.heap.write_bps:
+        for bp in self.state.heaphopper.write_bps:
             self.state.inspect.remove_breakpoint('mem_write', bp=bp)
-        self.state.heap.write_bps = []
+        self.state.heaphopper.write_bps = []
 
         # Don't track heap_init malloc
-        if self.state.heap.initialized == 0:
-            self.state.heap.initialized = 1
+        if self.state.heaphopper.initialized == 0:
+            self.state.heaphopper.initialized = 1
             return self.state.regs.rax
 
         if 'arb_write' in vulns:
             # Remove breakpoint and check for arbitrary writes
-            if self.state.heap.vuln_type == 'arbitrary_write':
+            if self.state.heaphopper.vuln_type == 'arbitrary_write':
                 #logger.info('Found arbitrary write')
-                self.state.heap.vulnerable = True
-                self.state.heap.vuln_type = 'arbitrary_write_malloc'
+                self.state.heaphopper.vulnerable = True
+                self.state.heaphopper.vuln_type = 'arbitrary_write_malloc'
 
         # Check if malloc return some bogus pointer
         addr = self.state.regs.rax
 
         # Get ctrl_data ptr used as id
-        dict_key = ctrl_data[self.state.heap.ctrl_data_idx]
-        self.state.heap.ctrl_data_idx += 1
+        dict_key = ctrl_data[self.state.heaphopper.ctrl_data_idx]
+        self.state.heaphopper.ctrl_data_idx += 1
 
         # This might be better than checking for symbolic
         sols = self.state.solver.eval_upto(addr, 2)
@@ -141,28 +141,28 @@ class MallocInspect(SimProcedure):
         # Get min val
         val = sols[0]
 
-        if 'bad_alloc' in vulns and val in self.state.heap.fake_frees:
+        if 'bad_alloc' in vulns and val in self.state.heaphopper.fake_frees:
             logger.info('Found allocation to fake freed address')
             self.state.add_constraints(addr == val)
-            self.state.heap.vulnerable = True
-            self.state.heap.vuln_type = 'malloc_non_heap'
-            self.state.heap.vuln_state = self.state.copy()
+            self.state.heaphopper.vulnerable = True
+            self.state.heaphopper.vuln_type = 'malloc_non_heap'
+            self.state.heaphopper.vuln_state = self.state.copy()
         elif 'bad_alloc' in vulns and val < self.state.libc.heap_location:
             logger.info('Found allocation on bogus non-heap address')
             self.state.add_constraints(addr < self.state.libc.heap_location)
-            self.state.heap.vulnerable = True
-            self.state.heap.vuln_type = 'malloc_non_heap'
-            self.state.heap.vuln_state = self.state.copy()
-        elif 'overlap_alloc' in vulns and val not in self.state.heap.double_free:
-            self.check_overlap(self.state.heap.malloc_dict, addr, self.state.heap.req_size)
+            self.state.heaphopper.vulnerable = True
+            self.state.heaphopper.vuln_type = 'malloc_non_heap'
+            self.state.heaphopper.vuln_state = self.state.copy()
+        elif 'overlap_alloc' in vulns and val not in self.state.heaphopper.double_free:
+            self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size)
 
-        self.state.heap.malloc_dict[dict_key] = (self.state.heap.req_size, addr)
+        self.state.heaphopper.malloc_dict[dict_key] = (self.state.heaphopper.req_size, addr)
 
         # Remove from free dict if reallocated
-        for key in list(self.state.heap.free_dict.keys()):
-            sol = self.state.solver.min(self.state.heap.free_dict[key][1])
+        for key in list(self.state.heaphopper.free_dict.keys()):
+            sol = self.state.solver.min(self.state.heaphopper.free_dict[key][1])
             if val == sol:
-                self.state.heap.free_dict.pop(key)
+                self.state.heaphopper.free_dict.pop(key)
                 break
 
         self.state.add_constraints(addr == val)
@@ -174,30 +174,30 @@ class MallocInspect(SimProcedure):
                 extra_constraints=[addr < self.state.libc.heap_location]):
             logger.info('Found allocation on bogus non-heap address')
             self.state.add_constraints(addr < self.state.libc.heap_location)
-            self.state.heap.vulnerable = True
-            self.state.heap.vuln_type = 'malloc_non_heap'
-            self.state.heap.vuln_state = self.state.copy()
+            self.state.heaphopper.vulnerable = True
+            self.state.heaphopper.vuln_type = 'malloc_non_heap'
+            self.state.heaphopper.vuln_state = self.state.copy()
             return addr
 
         # check overlaps
-        if 'overlap_alloc' in vulns and str(addr) not in self.state.heap.double_free:
-            self.check_overlap(self.state.heap.malloc_dict, addr, self.state.heap.req_size)
+        if 'overlap_alloc' in vulns and str(addr) not in self.state.heaphopper.double_free:
+            self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size)
 
         val = self.state.solver.min(addr)
 
-        self.state.heap.malloc_dict[dict_key] = (self.state.heap.req_size, addr)
+        self.state.heaphopper.malloc_dict[dict_key] = (self.state.heaphopper.req_size, addr)
 
         # This improves speed significantly, nobody knows why... some magic caching probably
-        size_vals = self.state.solver.eval_upto(self.state.heap.req_size, 16)
+        size_vals = self.state.solver.eval_upto(self.state.heaphopper.req_size, 16)
         # Let's use the value for smth. useful, if we solve anyways
         if len(size_vals) == 1:
-            self.state.add_constraints(self.state.heap.req_size == size_vals[0])
+            self.state.add_constraints(self.state.heaphopper.req_size == size_vals[0])
 
         # Remove from free dict if reallocated
-        for key in list(self.state.heap.free_dict.keys()):
-            sol = self.state.solver.min(self.state.heap.free_dict[key][1])
+        for key in list(self.state.heaphopper.free_dict.keys()):
+            sol = self.state.solver.min(self.state.heaphopper.free_dict[key][1])
             if val == sol:
-                self.state.heap.free_dict.pop(key)
+                self.state.heaphopper.free_dict.pop(key)
                 break
 
         return addr
@@ -210,15 +210,15 @@ class MallocInspect(SimProcedure):
             if self.state.solver.satisfiable(extra_constraints=[condition1]):
                 logger.info('Found overlapping allocation')
                 self.state.add_constraints(condition1)
-                self.state.heap.vulnerable = True
-                self.state.heap.vuln_type = 'malloc_allocated'
-                self.state.heap.vuln_state = self.state.copy()
+                self.state.heaphopper.vulnerable = True
+                self.state.heaphopper.vuln_type = 'malloc_allocated'
+                self.state.heaphopper.vuln_state = self.state.copy()
             if self.state.solver.satisfiable(extra_constraints=[condition2]):
                 logger.info('Found overlapping allocation')
                 self.state.add_constraints(condition2)
-                self.state.heap.vulnerable = True
-                self.state.heap.vuln_type = 'malloc_allocated'
-                self.state.heap.vuln_state = self.state.copy()
+                self.state.heaphopper.vulnerable = True
+                self.state.heaphopper.vuln_type = 'malloc_allocated'
+                self.state.heaphopper.vuln_state = self.state.copy()
 
 
 class FreeInspect(SimProcedure):
@@ -227,29 +227,29 @@ class FreeInspect(SimProcedure):
     def run(self, ptr, free_addr=None, vulns=None, sym_data=None):
         val = self.state.solver.min(ptr)
         if val in sym_data:
-            self.state.heap.fake_frees.append(val)
+            self.state.heaphopper.fake_frees.append(val)
         else:
             found = False
-            for key in list(self.state.heap.malloc_dict.keys()):
-                sol = self.state.solver.min(self.state.heap.malloc_dict[key][1])
+            for key in list(self.state.heaphopper.malloc_dict.keys()):
+                sol = self.state.solver.min(self.state.heaphopper.malloc_dict[key][1])
                 if val == sol:
-                    minfo = self.state.heap.malloc_dict.pop(key)
-                    self.state.heap.free_dict[key] = minfo
+                    minfo = self.state.heaphopper.malloc_dict.pop(key)
+                    self.state.heaphopper.free_dict[key] = minfo
                     found = True
             if not found:
-                for key in list(self.state.heap.free_dict.keys()):
-                    sol = self.state.solver.min(self.state.heap.free_dict[key][1])
+                for key in list(self.state.heaphopper.free_dict.keys()):
+                    sol = self.state.solver.min(self.state.heaphopper.free_dict[key][1])
                     if val == sol:
-                        self.state.heap.double_free.append(val)
+                        self.state.heaphopper.double_free.append(val)
 
         if 'arb_write' in vulns:
-            self.state.heap.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
+            self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
                                                             action=check_write))
 
         if val in sym_data:
-            self.state.heap.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
+            self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
                                                             action=check_sym_data))
-        self.state.heap.curr_freed_chunk = val
+        self.state.heaphopper.curr_freed_chunk = val
 
         self.call(free_addr, [ptr], 'check_free')
 
@@ -258,47 +258,47 @@ class FreeInspect(SimProcedure):
         self.state.curr_freed_chunk = None
 
         # Clear breakpoints
-        for bp in self.state.heap.write_bps:
+        for bp in self.state.heaphopper.write_bps:
             self.state.inspect.remove_breakpoint('mem_write', bp=bp)
-        self.state.heap.write_bps = []
+        self.state.heaphopper.write_bps = []
 
         # Don't track heap_init free
-        if self.state.heap.initialized == 1:
-            self.state.heap.initialized = 2
+        if self.state.heaphopper.initialized == 1:
+            self.state.heaphopper.initialized = 2
             return
 
         # check non-heap:
         if 'bad_free' in vulns and self.state.solver.satisfiable(
                 extra_constraints=[ptr < self.state.libc.heap_location]):
             logger.info('Found free of non-heap address')
-            self.state.heap.vulnerable = True
-            self.state.heap.vuln_type = 'free_non_heap'
-            self.state.heap.vuln_state = self.state.copy()
+            self.state.heaphopper.vulnerable = True
+            self.state.heaphopper.vuln_type = 'free_non_heap'
+            self.state.heaphopper.vuln_state = self.state.copy()
             return
 
         if 'double_free' in vulns:
             val = self.state.solver.min(ptr)
-            if val in self.state.heap.double_free:
+            if val in self.state.heaphopper.double_free:
                 logger.info('Found double free')
-                self.state.heap.vulnerable = True
-                self.state.heap.vuln_state = self.state.copy()
+                self.state.heaphopper.vulnerable = True
+                self.state.heaphopper.vuln_state = self.state.copy()
                 return
 
         if 'arb_write' not in vulns:
             return
 
         # Remove breakpoint and check for arbitrary writes
-        if self.state.heap.vuln_type == 'arbitrary_write':
+        if self.state.heaphopper.vuln_type == 'arbitrary_write':
             #logger.info('Found arbitrary write')
-            self.state.heap.vulnerable = True
-            self.state.heap.vuln_type = 'arbitrary_write_free'
+            self.state.heaphopper.vulnerable = True
+            self.state.heaphopper.vuln_type = 'arbitrary_write_free'
 
         return
 
 
 def check_write(state):
     # If we found an arb_write we're done
-    if state.heap.vuln_type.startswith('arbitrary_write'):
+    if state.heaphopper.vuln_type.startswith('arbitrary_write'):
         return
 
     # Check if we have an arbitrary_write
@@ -306,28 +306,28 @@ def check_write(state):
     val = state.inspect.mem_write_expr
     #logger.debug('check_write: addr: %s' % addr)
     #logger.debug('check_write: val: %s' % val)
-    constr = claripy.And(addr >= state.heap.wtarget[0],
-                         addr < state.heap.wtarget[0] + state.heap.wtarget[1])
+    constr = claripy.And(addr >= state.heaphopper.wtarget[0],
+                         addr < state.heaphopper.wtarget[0] + state.heaphopper.wtarget[1])
 
     if state.solver.satisfiable(extra_constraints=[constr]):
         #logger.debug('check_write: Found arbitrary write')
         state.add_constraints(constr)
-        state.heap.vuln_state = state.copy()
-        state.heap.arb_write_info = dict(instr=state.addr, addr=addr, val=val)
-        state.heap.vuln_type = 'arbitrary_write'
-        state.heap.stack_trace = get_libc_stack_trace(state)
+        state.heaphopper.vuln_state = state.copy()
+        state.heaphopper.arb_write_info = dict(instr=state.addr, addr=addr, val=val)
+        state.heaphopper.vuln_type = 'arbitrary_write'
+        state.heaphopper.stack_trace = get_libc_stack_trace(state)
 
 def check_sym_data(state):
     # Check if we overwrite a sym_data structure passed to free
     addr = state.inspect.mem_write_address
-    free_addr = state.heap.curr_freed_chunk
-    if free_addr in state.heap.sym_data_states and not state.heap.sym_data_states[free_addr]:
+    free_addr = state.heaphopper.curr_freed_chunk
+    if free_addr in state.heaphopper.sym_data_states and not state.heaphopper.sym_data_states[free_addr]:
         #logger.debug('check_sym_data: curr_freed_chunk: 0x%x' % free_addr)
         #logger.debug('check_sym_data: addr: %s' % addr)
-        constr = claripy.And(addr >= free_addr, addr < free_addr + state.heap.sym_data_size)
+        constr = claripy.And(addr >= free_addr, addr < free_addr + state.heaphopper.sym_data_size)
         if not state.solver.symbolic(addr) and state.solver.satisfiable(extra_constraints=[constr]):
             #logger.debug('check_sym_data: Saving state')
-            state.heap.sym_data_states[free_addr] = state.copy()
+            state.heaphopper.sym_data_states[free_addr] = state.copy()
 
 
 
@@ -335,6 +335,6 @@ def check_sym_data(state):
 def get_libc_stack_trace(state):
     backtrace = state.history.bbl_addrs.hardcopy[::-1]
     index = 0
-    while state.heap.allocator.contains_addr(backtrace[index]):
+    while state.heaphopper.allocator.contains_addr(backtrace[index]):
         index += 1
     return backtrace[:index]

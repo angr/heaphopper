@@ -16,7 +16,7 @@ class VulnChecker(angr.exploration_techniques.ExplorationTechnique):
 
     def step(self, sm, stash, **kwargs):
         # We stop if we find the first vuln
-        sm.move(from_stash='active', to_stash='vuln', filter_func=lambda p: p.heap.vulnerable)
+        sm.move(from_stash='active', to_stash='vuln', filter_func=lambda p: p.heaphopper.vulnerable)
 
         if not self.pre_constraint and len(sm.vuln):
             sm.move(from_stash='vuln', to_stash='unsat_input',
@@ -27,7 +27,7 @@ class VulnChecker(angr.exploration_techniques.ExplorationTechnique):
         if self.stop_found and len(sm.vuln):
             sm.move(from_stash='deferred', to_stash='unused')
         elif self.filter_fake_free and len(sm.vuln):
-            if any(p.state.heap.fake_frees for p in sm.vuln):
+            if any(p.state.heaphopper.fake_frees for p in sm.vuln):
                 sm.move(from_stash='deferred', to_stash='unused')
 
         return sm.step(stash=stash)
