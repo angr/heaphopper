@@ -173,8 +173,8 @@ class MallocInspect(SimProcedure):
         if 'bad_alloc' in vulns and self.state.solver.satisfiable(
                 extra_constraints=[addr < self.state.heap.heap_base]):
             logger.info('Found allocation on bogus non-heap address')
-            val = self.state.solver.eval(addr)
             self.state.add_constraints(addr < self.state.heap.heap_base)
+            val = self.state.solver.eval(addr)
             self.state.add_constraints(addr == val)
             self.state.heaphopper.vulnerable = True
             self.state.heaphopper.vuln_type = 'malloc_non_heap'

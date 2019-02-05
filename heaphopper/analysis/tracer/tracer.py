@@ -15,6 +15,7 @@ import sys
 from elftools.elf.elffile import ELFFile
 
 from angr.state_plugins import Flags, SimFile
+from angr import SimHeapBrk
 from ..heap_condition_tracker import HeapConditionTracker, MallocInspect, FreeInspect
 from ..mem_limiter import MemLimiter
 from ..vuln_checker import VulnChecker
@@ -245,17 +246,6 @@ Configure state and fill memory with symbolic variables
 
 
 def setup_state(state, proj, config):
-    # set heap location right after bss
-    bss = proj.loader.main_object.sections_map['.bss']
-    heap_start = ((bss.vaddr + bss.memsize) & ~0xfff) + 0x1000
-    heap_size = 64 * 4096
-    new_brk = claripy.BVV(heap_start + heap_size, state.arch.bits)
-    state.posix.set_brk(new_brk)
-
-    #import IPython; IPython.embed()
-    state.heap.heap_base = heap_start
-    state.heap.mmap_base = heap_start + heap_size * 2
-    state.heap.heap_size = heap_size
 
     # Inject symbolic controlled data into memory
     var_dict = dict()
@@ -452,11 +442,21 @@ def trace(config_name, binary_name):
     removed_options = set()
     removed_options.add(angr.options.LAZY_SOLVES)
 
-    state = proj.factory.entry_state(add_options=added_options, remove_options=removed_options)
+    # set heap location right after bss
+    bss = proj.loader.main_object.sections_map['.bss']
+    heap_base = ((bss.vaddr + bss.memsize) & ~0xfff) + 0x1000
+    heap_size = 64 * 4096
+    new_brk = claripy.BVV(heap_base + heap_size, proj.arch.bits)
+
+
+    heap = SimHeapBrk(heap_base=heap_base, heap_size=heap_size)
+    state = proj.factory.entry_state(heap=heap, add_options=added_options, remove_options=removed_options)
     state.register_plugin('heaphopper', HeapConditionTracker(config=config,
                                                        wtarget=(write_target_var.rebased_addr,
                                                                 write_target_var.size),
                                                        libc=libc, allocator=allocator))
+
+    state.posix.set_brk(new_brk)
     state.heaphopper.set_level(config['log_level'])
 
     if config['fix_loader_problem']:
