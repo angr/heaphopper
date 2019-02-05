@@ -252,8 +252,10 @@ def setup_state(state, proj, config):
     new_brk = claripy.BVV(heap_start + heap_size, state.arch.bits)
     state.posix.set_brk(new_brk)
 
-    state.libc.heap_location = heap_start
-    state.libc.mmap_base = heap_start + heap_size * 2
+    #import IPython; IPython.embed()
+    state.heap.heap_base = heap_start
+    state.heap.mmap_base = heap_start + heap_size * 2
+    state.heap.heap_size = heap_size
 
     # Inject symbolic controlled data into memory
     var_dict = dict()
@@ -736,7 +738,7 @@ def store_results(num_results, bin_file, states, var_dict, fd):
                                                                                    endness='Iend_LE'))
         result['stack_trace'] = state.heaphopper.stack_trace
         result['last_line'] = state.heaphopper.last_line
-        result['heap_base'] = state.libc.heap_location
+        result['heap_base'] = state.heap.heap_base
         result['allocs'] = []
         result['arb_write_offsets'] = []
         result['bf_offsets'] = []

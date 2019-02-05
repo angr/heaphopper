@@ -147,9 +147,9 @@ class MallocInspect(SimProcedure):
             self.state.heaphopper.vulnerable = True
             self.state.heaphopper.vuln_type = 'malloc_non_heap'
             self.state.heaphopper.vuln_state = self.state.copy()
-        elif 'bad_alloc' in vulns and val < self.state.libc.heap_location:
+        elif 'bad_alloc' in vulns and val < self.state.heap.heap_base:
             logger.info('Found allocation on bogus non-heap address')
-            self.state.add_constraints(addr < self.state.libc.heap_location)
+            self.state.add_constraints(addr < self.state.heap.heap_base)
             self.state.heaphopper.vulnerable = True
             self.state.heaphopper.vuln_type = 'malloc_non_heap'
             self.state.heaphopper.vuln_state = self.state.copy()
@@ -171,10 +171,10 @@ class MallocInspect(SimProcedure):
     def check_sym_malloc(self, addr, vulns, dict_key):
         # check non-heap:
         if 'bad_alloc' in vulns and self.state.solver.satisfiable(
-                extra_constraints=[addr < self.state.libc.heap_location]):
+                extra_constraints=[addr < self.state.heap.heap_base]):
             logger.info('Found allocation on bogus non-heap address')
             val = self.state.solver.eval(addr)
-            self.state.add_constraints(addr < self.state.libc.heap_location)
+            self.state.add_constraints(addr < self.state.heap.heap_base)
             self.state.add_constraints(addr == val)
             self.state.heaphopper.vulnerable = True
             self.state.heaphopper.vuln_type = 'malloc_non_heap'
@@ -271,7 +271,7 @@ class FreeInspect(SimProcedure):
 
         # check non-heap:
         if 'bad_free' in vulns and self.state.solver.satisfiable(
-                extra_constraints=[ptr < self.state.libc.heap_location]):
+                extra_constraints=[ptr < self.state.heap.heap_base]):
             logger.info('Found free of non-heap address')
             self.state.heaphopper.vulnerable = True
             self.state.heaphopper.vuln_type = 'free_non_heap'
