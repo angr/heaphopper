@@ -3,6 +3,7 @@ heaphopper
 
 [![Build Status](https://travis-ci.org/angr/heaphopper.svg?branch=master)](https://travis-ci.org/angr/heaphopper)
 [![License](https://img.shields.io/github/license/angr/angr.svg)](https://github.com/angr/heaphopper/blob/master/LICENSE)
+[![Rawsec's CyberSecurity Inventory](https://inventory.rawsec.ml/img/badges/Rawsec-inventoried-FF5050_flat.svg)](https://inventory.rawsec.ml/tools.html#heaphopper)
 
 HeapHopper is a bounded model checking framework for Heap-implementations.
 
