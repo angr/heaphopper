@@ -110,7 +110,6 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
         if not symbol:
             return hex(addr), (0, 0x0)
         base = symbol.rebased_addr + sym_off
-        sym = sym
         sym_prefix = '&'
 
     addr_clean = addr & ~0x7
@@ -125,6 +124,8 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
                     if found_sym and found_sym.name == 'write_target':
                         break
 
+            if not found_sym:
+                found_sym = s
             off = base + addr_clean - found_sym.rebased_addr
             expr = '(uint64_t) ((((char *) &{}) - (char *) {}{}) - {}) + {}'.format(found_sym.name, sym_prefix, sym, sym_off, off)
             return expr, (0, 0x0)
@@ -135,6 +136,8 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
                     if found_sym and found_sym.name == 'write_target':
                         break
 
+            if not found_sym:
+                found_sym = s
             off = base - addr_clean - found_sym.rebased_addr
             expr = '(uint64_t) ((((char *) {}{}) - (char *) &{}) + {}) - {}'.format(sym_prefix, sym, found_sym.name, sym_off, off)
             return expr, (0, 0x0)
@@ -277,11 +280,12 @@ def gen_poc(result, src_file, bin_file, last_line):
                 # UAF
                 poc_desc['uafs'] += 1
                 dst = re.findall(r'read\(.*, (ctrl_data_\d+.global_var),', line)[0]
+                dst_idx = re.findall(r'ctrl_data_(\d+).global_var', dst)[0]
                 for i in range(0, header, 8):
                     val = b'0x' + binascii.hexlify(input_opt[:8][::-1])
                     input_opt = input_opt[8:]
                     sym_offset, prev_part = check_addr(int(val, 16), 0x0, (0, 0x0), main_bin, heap_base, allocs,
-                                                       'ctrl_data_{}.global_var'.format(dst), i)
+                                                       'ctrl_data_{}.global_var'.format(dst_idx), i)
                     poc.append('{}{}[{}] = {};'.format(space, dst, i // 8, sym_offset))
                     last_action_size += 1
             elif 'read(0, &arw_offsets' in line:
