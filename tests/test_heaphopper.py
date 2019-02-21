@@ -14,8 +14,8 @@ import logging
 logger = logging.getLogger('heaphopper-test')
 
 VERBOSE = False
-OK="OK"
-ERROR="ERROR"
+OK = "OK"
+ERROR = "ERROR"
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -67,18 +67,20 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
     status = OK
     if not VERBOSE:
         try:
-            p = check_call(['python', 'heaphopper.py', 'poc',
-                            '-c', '{}/{}'.format(folder_name, analysis_name),
-                            '-b', '{}/{}'.format(folder_name, binary_name),
-                            '-r', '{}'.format(result_name),
-                            '-d', '{}'.format(desc_name),
-                            '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR), stdout=PIPE, stderr=STDOUT)
+            output = check_output(['python', 'heaphopper.py', 'poc',
+                                   '-c', '{}/{}'.format(folder_name, analysis_name),
+                                   '-b', '{}/{}'.format(folder_name, binary_name),
+                                   '-r', '{}'.format(result_name),
+                                   '-d', '{}'.format(desc_name),
+                                   '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
         except CalledProcessError as e:
             if e.output:
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
 
-        msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code. This indicates an problem with heaphopper internals and could be a bug or a problem with recent changes in angr."
+        msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code. This " \
+              "indicates an problem with heaphopper internals and could be a bug or a problem with recent changes in " \
+              "angr. "
 
         nose.tools.assert_equal(status, OK, msg)
 
@@ -90,23 +92,26 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
 
-        msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with the symbolic execution in angr."
+        msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid " \
+              "C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with " \
+              "the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
 
     else:
         try:
             logger.info(check_output(['python', 'heaphopper.py', 'poc',
-                                '-c', '{}/{}'.format(folder_name, analysis_name),
-                                '-b', '{}/{}'.format(folder_name, binary_name),
-                                '-r', '{}'.format(result_name),
-                                '-d', '{}'.format(desc_name),
-                                '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR)), stderr=STDOUT)
+                                      '-c', '{}/{}'.format(folder_name, analysis_name),
+                                      '-b', '{}/{}'.format(folder_name, binary_name),
+                                      '-r', '{}'.format(result_name),
+                                      '-d', '{}'.format(desc_name),
+                                      '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR)), stderr=STDOUT)
         except CalledProcessError as e:
             if e.output:
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
 
-        msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code. This indicates an problem with heaphopper internals and could be a bug or a problem with changes in angr."
+        msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code. This " \
+              "indicates an problem with heaphopper internals and could be a bug or a problem with changes in angr. "
         nose.tools.assert_equal(status, OK, msg)
 
         poc_path = glob.glob(poc_path)[0]
@@ -117,7 +122,9 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
             if e.output:
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
-        msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with the symbolic execution in angr."
+        msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid " \
+              "C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with " \
+              "the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
 
     return True
@@ -128,10 +135,7 @@ def verify_poc_single(poc_path, poc_type):
     poc_path = glob.glob(poc_path)[0]
     poc_bin = '{}/bin/poc_0_0.bin'.format(poc_path)
 
-    worked = True
     try:
-        # output = check_output(['{}/run_poc.sh {}'.format(BASE_DIR, poc_bin)], cwd='{}'.format(BASE_DIR), shell=True, stderr=STDOUT)
-        # output = check_output(['./ld-linux-x86-64.so.2', poc_bin], env={"LD_PRELOAD":"./libc.so.6"}, cwd='{}'.format(BASE_DIR), stderr=STDOUT)
         output = check_output(['./ld-linux-x86-64.so.2', poc_bin],
                               env={"LD_PRELOAD": "./libc.so.6", "LIBC_FATAL_STDERR_": "1"}, cwd='{}'.format(BASE_DIR),
                               stderr=STDOUT)
@@ -139,7 +143,8 @@ def verify_poc_single(poc_path, poc_type):
         logger.error(e.output.decode('utf-8'))
         status = ERROR
 
-    msg = "Running the POC failed with an non-zero exit code. This is a strong indication for a bug in the poc-generation and most likely has nothing to do with the symbolic execution in angr."
+    msg = "Running the POC failed with an non-zero exit code. This is a strong indication for a bug in the " \
+          "poc-generation and most likely has nothing to do with the symbolic execution in angr. "
     nose.tools.assert_equal(status, OK, msg)
 
     if VERBOSE:
@@ -150,7 +155,8 @@ def verify_poc_single(poc_path, poc_type):
         if not res:
             logger.error(output.decode('utf-8'))
             status = ERROR
-        msg = "The concrete execution did not reach the malloc_non_heap state. This is a strong indication for a bug in the poc-generation and most likely has nothing to do with the symbolic execution in angr."
+        msg = "The concrete execution did not reach the malloc_non_heap state. This is a strong indication for a bug " \
+              "in the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
         return res
 
@@ -159,7 +165,8 @@ def verify_poc_single(poc_path, poc_type):
         if not res:
             logger.error(output.decode('utf-8'))
             status = ERROR
-        msg = "The concrete execution did not reach the malloc_allocated state. This is a strong indication for a bug in the poc-generation and most likely has nothing to do with the symbolic execution in angr."
+        msg = "The concrete execution did not reach the malloc_allocated state. This is a strong indication for a bug " \
+              "in the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
         return res
     elif poc_type.startswith('arbitrary_write'):
@@ -167,7 +174,8 @@ def verify_poc_single(poc_path, poc_type):
         if not res:
             logger.error(output.decode('utf-8'))
             status = ERROR
-        msg = "The concrete execution did not trigger an arbitrary write. This is a strong indication for a bug in the poc-generation and most likely has nothing to do with the symbolic execution in angr."
+        msg = "The concrete execution did not trigger an arbitrary write. This is a strong indication for a bug in " \
+              "the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
         return res
 
