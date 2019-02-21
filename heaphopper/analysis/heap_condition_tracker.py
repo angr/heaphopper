@@ -140,6 +140,10 @@ class MallocInspect(SimProcedure):
 
         # Get min val
         val = sols[0]
+        self.state.add_constraints(addr == val)
+
+        if self.state.heaphopper.vulnerable:
+            return val
 
         if 'bad_alloc' in vulns and val in self.state.heaphopper.fake_frees:
             logger.info('Found allocation to fake freed address')
@@ -165,10 +169,12 @@ class MallocInspect(SimProcedure):
                 self.state.heaphopper.free_dict.pop(key)
                 break
 
-        self.state.add_constraints(addr == val)
         return val
 
     def check_sym_malloc(self, addr, vulns, dict_key):
+        if self.state.heaphopper.vulnerable:
+            return addr
+
         # check non-heap:
         if 'bad_alloc' in vulns and self.state.solver.satisfiable(
                 extra_constraints=[addr < self.state.libc.heap_location]):
