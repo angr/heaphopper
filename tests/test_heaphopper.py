@@ -39,11 +39,12 @@ def run_single(folder_name, analysis_name, binary_name):
     status = OK
     start = time.time()
     try:
-        output = check_output(
-            ['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name), '-b',
-             '{}/{}'.format(folder_name, binary_name)], cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
+        cmd = ['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name), '-b',
+             '{}/{}'.format(folder_name, binary_name)]
+        output = check_output(cmd, cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
     except CalledProcessError as e:
         if e.output:
+            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
             logger.error(e.output.decode('utf-8'))
         status = ERROR
     nose.tools.assert_equal(status, OK, "The symbolic execution failed with an non-zero exit code.")
@@ -55,6 +56,7 @@ def check_single(result_path, folder_name, analysis_name, binary_name):
     status = OK
     ts, output = run_single(folder_name, analysis_name, binary_name)
     if not os.path.isfile(result_path):
+        logger.error("Error tracing {}. Log-output:".format(analysis_name))
         logger.error(output.decode('utf-8'))
         status = ERROR
     msg = "Couldn't find result files: This indicates a problem with the sybmolic execution in angr and means we " \
@@ -67,18 +69,20 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
     status = OK
     if not VERBOSE:
         try:
-            output = check_output(['python', 'heaphopper.py', 'poc',
+            cmd = ['python', 'heaphopper.py', 'poc',
                                    '-c', '{}/{}'.format(folder_name, analysis_name),
                                    '-b', '{}/{}'.format(folder_name, binary_name),
                                    '-r', '{}'.format(result_name),
                                    '-d', '{}'.format(desc_name),
-                                   '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
+                                   '-s', '{}'.format(source_name)]
+            output = check_output(cmd, cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
         except CalledProcessError as e:
             if e.output:
+                logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
 
-        msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code. This " \
+        msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code.\nThis " \
               "indicates an problem with heaphopper internals and could be a bug or a problem with recent changes in " \
               "angr. "
 
@@ -86,27 +90,31 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
 
         poc_path = glob.glob(poc_path)[0]
         try:
-            check_call(['make', '-C', poc_path, 'pocs-print'], stdout=DEVNULL)
+            cmd = ['make', '-C', poc_path, 'pocs-print']
+            output = check_output(cmd, stderr=STDOUT)
         except CalledProcessError as e:
             if e.output:
+                logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
 
-        msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid " \
+        msg = "Failed to compile the synthesized concrete source code.\nMost likely the poc-generation created invalid " \
               "C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with " \
               "the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
 
     else:
         try:
-            logger.info(check_output(['python', 'heaphopper.py', 'poc',
+            cmd = ['python', 'heaphopper.py', 'poc',
                                       '-c', '{}/{}'.format(folder_name, analysis_name),
                                       '-b', '{}/{}'.format(folder_name, binary_name),
                                       '-r', '{}'.format(result_name),
                                       '-d', '{}'.format(desc_name),
-                                      '-s', '{}'.format(source_name)], cwd='{}/../'.format(BASE_DIR)), stderr=STDOUT)
+                                      '-s', '{}'.format(source_name)]
+            logger.info(check_output(cmd, cwd='{}/../'.format(BASE_DIR)), stderr=STDOUT)
         except CalledProcessError as e:
             if e.output:
+                logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
 
@@ -117,9 +125,11 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
         poc_path = glob.glob(poc_path)[0]
 
         try:
-            logger.info(check_output(['make', '-C', poc_path, 'pocs-print']))
+            cmd = ['make', '-C', poc_path, 'pocs-print']
+            logger.info(check_output(cmd))
         except CalledProcessError as e:
             if e.output:
+                logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
                 logger.error(e.output.decode('utf-8'))
             status = ERROR
         msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid " \
@@ -136,10 +146,12 @@ def verify_poc_single(poc_path, poc_type):
     poc_bin = '{}/bin/poc_0_0.bin'.format(poc_path)
 
     try:
-        output = check_output(['./ld-linux-x86-64.so.2', poc_bin],
+        cmd = ['./ld-linux-x86-64.so.2', poc_bin]
+        output = check_output(cmd,
                               env={"LD_PRELOAD": "./libc.so.6", "LIBC_FATAL_STDERR_": "1"}, cwd='{}'.format(BASE_DIR),
                               stderr=STDOUT)
     except CalledProcessError as e:
+        logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
         logger.error(e.output.decode('utf-8'))
         status = ERROR
 
@@ -153,6 +165,7 @@ def verify_poc_single(poc_path, poc_type):
     if poc_type == 'malloc_non_heap':
         res = verify_non_heap(output)
         if not res:
+            logger.error("Error running POC {}. output:".format(poc_bin))
             logger.error(output.decode('utf-8'))
             status = ERROR
         msg = "The concrete execution did not reach the malloc_non_heap state. This is a strong indication for a bug " \
@@ -163,6 +176,7 @@ def verify_poc_single(poc_path, poc_type):
     elif poc_type == 'malloc_allocated':
         res = verify_malloc_allocated(output)
         if not res:
+            logger.error("Error running POC {}. output:".format(poc_bin))
             logger.error(output.decode('utf-8'))
             status = ERROR
         msg = "The concrete execution did not reach the malloc_allocated state. This is a strong indication for a bug " \
@@ -172,6 +186,7 @@ def verify_poc_single(poc_path, poc_type):
     elif poc_type.startswith('arbitrary_write'):
         res = verify_arbitrary_write(output)
         if not res:
+            logger.error("Error running POC {}. output:".format(poc_bin))
             logger.error(output.decode('utf-8'))
             status = ERROR
         msg = "The concrete execution did not trigger an arbitrary write. This is a strong indication for a bug in " \
