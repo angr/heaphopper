@@ -450,7 +450,8 @@ def trace(config_name, binary_name):
 
 
     heap = SimHeapBrk(heap_base=heap_base, heap_size=heap_size)
-    state = proj.factory.entry_state(heap=heap, add_options=added_options, remove_options=removed_options)
+    state = proj.factory.entry_state(add_options=added_options, remove_options=removed_options)
+    state.register_plugin('heap', heap)
     state.register_plugin('heaphopper', HeapConditionTracker(config=config,
                                                        wtarget=(write_target_var.rebased_addr,
                                                                 write_target_var.size),
