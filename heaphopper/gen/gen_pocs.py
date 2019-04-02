@@ -95,8 +95,8 @@ def check_addr(addr, next_part, prev_part, main_bin, heap_base, allocs, sym, sym
 def check_offset(sym, sym_off, addr, main_bin, allocs):
     if addr < 0x40:
         return hex(addr), (0, 0x0)
-    if addr > 0x100000000000000:  # Just in case it can't hurt to point back to us, pointer is arbitrary anyways
-        return '(uint64_t) &write_target', (0, 0x0)
+    #if addr > 0x100000000000000:  # Just in case it can't hurt to point back to us, pointer is arbitrary anyways
+    #    return '(uint64_t) &write_target', (0, 0x0)
 
     if not sym:
         return hex(addr), (0, 0x0)
