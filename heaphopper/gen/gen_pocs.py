@@ -19,7 +19,7 @@ logger = logging.getLogger('poc-generator')
 
 def load_yaml(file_name):
     with open(file_name, 'r') as f:
-        result = yaml.load(f)
+        result = yaml.load(f, Loader=yaml.SafeLoader)
     return result
 
 

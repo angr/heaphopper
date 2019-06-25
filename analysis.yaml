@@ -47,7 +47,7 @@ mem2chunk_offset: 16
 # Chunk fill size (number of byte read into each chunk when allocated): zero, header_size, chunk_size, <numeric value in bytes>
 chunk_fill_size: zero
 # Set log_level (DEBUG, INFO, ERROR)
-log_level: DEBUG
+log_level: INFO
 # Specify vulnerabilities to detect: arbitrary write, allocations over already allocated memory, allocations over non-
 # heap-memory, freeing of fake chunks
 vulns: [arb_write, overlap_alloc, bad_alloc]

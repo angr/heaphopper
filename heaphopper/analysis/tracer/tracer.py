@@ -605,7 +605,7 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
     global DESC_HEADER, DESC_SECTION_LINE
     logger.info('Creating vuln descriptions: {}-desc.yaml'.format(desc_file))
     with open('{}.desc'.format(desc_file.split('.')[0]), 'r') as f:
-        bin_info = yaml.load(f)
+        bin_info = yaml.load(f, Loader=yaml.SafeLoader)
     '''
     bin_info['allocs'] -> list of (dst_symbol, size_symbol)
     bin_info['frees'] -> list of (dst_symbol)
