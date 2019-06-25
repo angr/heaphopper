@@ -10,6 +10,8 @@ import nose
 from flaky import flaky
 import sys
 import logging
+from heaphopper.analysis.tracer.tracer import trace
+from heaphopper.gen.gen_pocs import gen_pocs
 
 logger = logging.getLogger('heaphopper-test')
 
@@ -38,26 +40,31 @@ def store_results(results_dict):
 def run_single(folder_name, analysis_name, binary_name):
     status = OK
     start = time.time()
-    try:
-        cmd = ['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name), '-b',
-             '{}/{}'.format(folder_name, binary_name)]
-        output = check_output(cmd, cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
-    except CalledProcessError as e:
-        if e.output:
-            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
-            logger.error(e.output.decode('utf-8'))
-        status = ERROR
-    nose.tools.assert_equal(status, OK, "The symbolic execution failed with an non-zero exit code.")
+    config_path = os.path.join(folder_name, analysis_name)
+    binary_path= os.path.join(folder_name, binary_name)
+    with open(config_path, "r") as config:
+        ret = trace(config, binary_path)
+    #try:
+    #    cmd = ['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name), '-b',
+    #         '{}/{}'.format(folder_name, binary_name)]
+    #    output = check_output(cmd, cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
+    #except CalledProcessError as e:
+    #    if e.output:
+    #        logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
+    #        logger.error(e.output.decode('utf-8'))
+    #    status = ERROR
+    #nose.tools.assert_equal(status, OK, "The symbolic execution failed with an non-zero exit code.")
     ts = time.time() - start
-    return ts, output
+    #return ts, output
+    return ts
 
 
 def check_single(result_path, folder_name, analysis_name, binary_name):
     status = OK
-    ts, output = run_single(folder_name, analysis_name, binary_name)
+    ts = run_single(folder_name, analysis_name, binary_name)
     if not os.path.isfile(result_path):
         logger.error("Error tracing {}. Log-output:".format(analysis_name))
-        logger.error(output.decode('utf-8'))
+        #logger.error(output.decode('utf-8'))
         status = ERROR
     msg = "Couldn't find result files: This indicates a problem with the sybmolic execution in angr and means we " \
           "failed to reach expected bad-state. "
@@ -69,7 +76,7 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
     status = OK
     if not VERBOSE:
         try:
-            cmd = ['python', 'heaphopper.py', 'poc',
+            cmd = ['python', 'heaphopper_client.py', 'poc',
                                    '-c', '{}/{}'.format(folder_name, analysis_name),
                                    '-b', '{}/{}'.format(folder_name, binary_name),
                                    '-r', '{}'.format(result_name),
@@ -105,7 +112,7 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
 
     else:
         try:
-            cmd = ['python', 'heaphopper.py', 'poc',
+            cmd = ['python', 'heaphopper_client.py', 'poc',
                                       '-c', '{}/{}'.format(folder_name, analysis_name),
                                       '-b', '{}/{}'.format(folder_name, binary_name),
                                       '-r', '{}'.format(result_name),
