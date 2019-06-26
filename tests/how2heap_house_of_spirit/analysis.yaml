@@ -1,7 +1,7 @@
 # Heap analysis configuration file
 
 # Use global config as base
-global_config: tests/analysis.yaml
+global_config: ../analysis.yaml
 
 #############################
 #     zoo-gen settings      #

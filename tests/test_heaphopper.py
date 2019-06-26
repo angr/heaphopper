@@ -38,24 +38,12 @@ def store_results(results_dict):
 
 
 def run_single(folder_name, analysis_name, binary_name):
-    status = OK
     start = time.time()
     config_path = os.path.join(folder_name, analysis_name)
     binary_path= os.path.join(folder_name, binary_name)
     with open(config_path, "r") as config:
         ret = trace(config, binary_path)
-    #try:
-    #    cmd = ['python', 'heaphopper.py', 'trace', '-c', '{}/{}'.format(folder_name, analysis_name), '-b',
-    #         '{}/{}'.format(folder_name, binary_name)]
-    #    output = check_output(cmd, cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
-    #except CalledProcessError as e:
-    #    if e.output:
-    #        logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
-    #        logger.error(e.output.decode('utf-8'))
-    #    status = ERROR
-    #nose.tools.assert_equal(status, OK, "The symbolic execution failed with an non-zero exit code.")
     ts = time.time() - start
-    #return ts, output
     return ts
 
 
@@ -95,78 +83,6 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
           "C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with " \
           "the symbolic execution in angr. "
     nose.tools.assert_equal(status, OK, msg)
-
-    #if not VERBOSE:
-    #    try:
-    #        cmd = ['python', 'heaphopper_client.py', 'poc',
-    #                               '-c', '{}/{}'.format(folder_name, analysis_name),
-    #                               '-b', '{}/{}'.format(folder_name, binary_name),
-    #                               '-r', '{}'.format(result_name),
-    #                               '-d', '{}'.format(desc_name),
-    #                               '-s', '{}'.format(source_name)]
-    #        output = check_output(cmd, cwd='{}/../'.format(BASE_DIR), stderr=STDOUT)
-    #    except CalledProcessError as e:
-    #        if e.output:
-    #            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
-    #            logger.error(e.output.decode('utf-8'))
-    #        status = ERROR
-
-    #    msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code.\nThis " \
-    #          "indicates an problem with heaphopper internals and could be a bug or a problem with recent changes in " \
-    #          "angr. "
-
-    #    nose.tools.assert_equal(status, OK, msg)
-
-    #    poc_path = glob.glob(poc_path)[0]
-    #    try:
-    #        cmd = ['make', '-C', poc_path, 'pocs-print']
-    #        output = check_output(cmd, stderr=STDOUT)
-    #    except CalledProcessError as e:
-    #        if e.output:
-    #            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
-    #            logger.error(e.output.decode('utf-8'))
-    #        status = ERROR
-
-    #    msg = "Failed to compile the synthesized concrete source code.\nMost likely the poc-generation created invalid " \
-    #          "C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with " \
-    #          "the symbolic execution in angr. "
-    #    nose.tools.assert_equal(status, OK, msg)
-
-    #else:
-    #    try:
-    #        cmd = ['python', 'heaphopper_client.py', 'poc',
-    #                                  '-c', '{}/{}'.format(folder_name, analysis_name),
-    #                                  '-b', '{}/{}'.format(folder_name, binary_name),
-    #                                  '-r', '{}'.format(result_name),
-    #                                  '-d', '{}'.format(desc_name),
-    #                                  '-s', '{}'.format(source_name)]
-    #        logger.info(check_output(cmd, cwd='{}/../'.format(BASE_DIR)), stderr=STDOUT)
-    #    except CalledProcessError as e:
-    #        if e.output:
-    #            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
-    #            logger.error(e.output.decode('utf-8'))
-    #        status = ERROR
-
-    #    msg = "Failed to merge the placeholder source code and the symbolic state into a concrete source code. This " \
-    #          "indicates an problem with heaphopper internals and could be a bug or a problem with changes in angr. "
-    #    nose.tools.assert_equal(status, OK, msg)
-
-
-
-    #    poc_path = glob.glob(poc_path)[0]
-
-    #    try:
-    #        cmd = ['make', '-C', poc_path, 'pocs-print']
-    #        logger.info(check_output(cmd))
-    #    except CalledProcessError as e:
-    #        if e.output:
-    #            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
-    #            logger.error(e.output.decode('utf-8'))
-    #        status = ERROR
-    #    msg = "Failed to compile the synthesized concrete source code. Most likely the poc-generation created invalid " \
-    #          "C. This is a strong indication for ab bug in the poc-generation and most likely has nothing to do with " \
-    #          "the symbolic execution in angr. "
-    #    nose.tools.assert_equal(status, OK, msg)
 
     return True
 

@@ -1,9 +1,11 @@
 import yaml
+import os
 
 def parse_config(config_file):
     config = yaml.load(config_file, Loader=yaml.SafeLoader)
     if 'global_config' in config:
-        with open(config['global_config']) as f:
+        global_config_path = os.path.abspath(os.path.join(os.path.dirname(config_file.name), config['global_config']))
+        with open(global_config_path) as f:
             base = yaml.load(f, Loader=yaml.SafeLoader)
             for k, v in base.items():
                 if k not in config:
