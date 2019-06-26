@@ -17,6 +17,10 @@ class MemLimiter(angr.exploration_techniques.ExplorationTechnique):
         if psutil.virtual_memory().percent > 90 or (self.max_mem - 1) < self.memory_usage_psutil:
             simgr.move(from_stash='active', to_stash='out_of_memory')
             simgr.move(from_stash='deferred', to_stash='out_of_memory')
+        if len(simgr.errored) > 0:
+            e = simgr.errored[0]
+            logger.warning(e)
+            logger.warning(e.error)
 
         #simgr.drop(stash='deadended')
         #simgr.drop(stash='avoid')
