@@ -339,6 +339,8 @@ def test_06_unsorted_bin_attack():
 #        poc_worked = verify_poc_single(poc_path, info['type'])
 #        nose.tools.assert_true(poc_worked)
 
+# Timeouts on travis
+@flaky(max_runs=3, min_passes=1)
 def test_09_poison_null_byte():
         TIME=500
         info = dict(folder_name='how2heap_poison_null_byte', conf='analysis.yaml', bin_name='poison_null_byte.bin', type='malloc_allocated')
