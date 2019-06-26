@@ -188,7 +188,8 @@ class MallocInspect(SimProcedure):
             return addr
 
         # check overlaps
-        if 'overlap_alloc' in vulns and str(addr) not in self.state.heaphopper.double_free:
+        # if the ast grows to big, str(addr) is expensive
+        if 'overlap_alloc' in vulns and (addr.ast.depth > 20 or str(addr) not in self.state.heaphopper.double_free):
             self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size)
 
         val = self.state.solver.min(addr)
