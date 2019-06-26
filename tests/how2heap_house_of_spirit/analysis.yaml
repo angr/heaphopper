@@ -46,4 +46,4 @@ chunk_fill_size: zero
 vulns: [bad_alloc]
 
 # Define where to store the proof-of-concept c-files
-pocs_path: tests/how2heap_house_of_spirit/pocs
+pocs_path: pocs

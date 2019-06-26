@@ -573,7 +573,8 @@ def gen_pocs(config_file, bin_file, res_file, desc_file, src_file):
     for result in results:
         last_lines.append((result['last_line'], get_last_line(result['last_line'], src_file)))
 
-    dir_path = gen_dir(config['pocs_path'], bin_file, results[0]['vuln_type'], results[0]['stack_trace'])
+    poc_path = os.path.abspath(os.path.join(os.path.dirname(config_file.name), config['pocs_path']))
+    dir_path = gen_dir(poc_path, bin_file, results[0]['vuln_type'], results[0]['stack_trace'])
 
     logger.info('Found {} vulnerable paths'.format(len(results)))
     poc_descs = []

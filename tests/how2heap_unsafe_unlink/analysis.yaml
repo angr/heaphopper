@@ -47,4 +47,4 @@ chunk_fill_size: header_size
 vulns: [arb_write]
 
 # Define where to store the proof-of-concept c-files
-pocs_path: tests/how2heap_unsafe_unlink/pocs
+pocs_path: pocs
