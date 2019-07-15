@@ -13,7 +13,7 @@ class HeapConditionTracker(SimStatePlugin):
     def __init__(self, config=None, libc=None, allocator=None, initialized=0, vulnerable=False, vuln_state=None,
                  vuln_type='', malloc_dict=None, free_dict=None, write_bps=None, wtarget=None,
                  req_size=None, arb_write_info=None, double_free=None, fake_frees=None, stack_trace=None,
-                 ctrl_data_idx=0, curr_freed_chunk=None, sym_data_states=None, sym_data_size=None, **kwargs):
+                 ctrl_data_idx=0, curr_freed_chunk=None, sym_data_states=None, sym_data_size=None, **kwargs):  # pylint:disable=unused-argument
         super(HeapConditionTracker, self).__init__()
         self.config = config
         self.libc = libc
@@ -39,18 +39,18 @@ class HeapConditionTracker(SimStatePlugin):
         self.sym_data_states = dict() if sym_data_states is None else dict(sym_data_states)
         self.sym_data_size = sym_data_size
 
-    def set_level(self, level):
+    def set_level(self, level): # pylint:disable=no-self-use
         logger.setLevel(level)
 
     @SimStatePlugin.memo
     def copy(self, _memo):
         return HeapConditionTracker(**self.__dict__)
 
-    def set_state(self, s, **kwargs):
-        super(HeapConditionTracker, self).set_state(s, **kwargs)
+    #def set_state(self, s, **kwargs):
+    #    super(HeapConditionTracker, self).set_state(s, **kwargs)
 
     # we need that for veritesting
-    def merge(self, others, merge_conditions, common_ancestor=None):
+    def merge(self, others, merge_conditions, common_ancestor=None): # pylint:disable=unused-argument
         # TODO: Do better merging
         for o in others:
             self.vulnerable |= o.vulnerable
@@ -101,7 +101,7 @@ class MallocInspect(SimProcedure):
     IS_FUNCTION = True
     local_vars = ()
 
-    def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None):
+    def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None): # pylint: disable=arguments-differ,unused-argument
         if 'arb_write' in vulns:
             self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
                                                             action=check_write))
@@ -189,7 +189,7 @@ class MallocInspect(SimProcedure):
 
         # check overlaps
         # if the ast grows to big, str(addr) is expensive
-        logger.info("check_sym_malloc: addr.ast.depth = {}".format(addr.ast.depth))
+        logger.info("check_sym_malloc: addr.ast.depth = %d", addr.ast.depth)
         if 'overlap_alloc' in vulns and (addr.ast.depth > 30 or str(addr) not in self.state.heaphopper.double_free):
             self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size)
 
@@ -234,7 +234,7 @@ class MallocInspect(SimProcedure):
 class FreeInspect(SimProcedure):
     IS_FUNCTION = True
 
-    def run(self, ptr, free_addr=None, vulns=None, sym_data=None):
+    def run(self, ptr, free_addr=None, vulns=None, sym_data=None): # pylint: disable=arguments-differ
         val = self.state.solver.min(ptr)
         if val in sym_data:
             self.state.heaphopper.fake_frees.append(val)

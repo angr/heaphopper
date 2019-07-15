@@ -23,8 +23,8 @@ def run_zoo_gen(config):
     sys.exit(ret)
 
 def run_poc_gen(config, binary, result, desc, source):
-    ret = gen_pocs(config, binary, result, desc, source)
-    sys.exit(ret)
+    gen_pocs(config, binary, result, desc, source)
+    sys.exit(0)
 
 
 if __name__ == '__main__':

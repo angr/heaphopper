@@ -592,10 +592,11 @@ def gen_zoo(config_file):
     variants, descs = gen_variants(config, action_count)
     print('Variants: {}'.format(len(variants)))
     if not config['create_files'] or not len(variants):
-        return
+        return -1
     fnames = write_files(config, variants)
     create_makefile(config['zoo_dir'], fnames, config['allocator'], config['libc'])
     create_descriptions(config['zoo_dir'], descs, fnames)
+    return 0
 
 
 if __name__ == '__main__':

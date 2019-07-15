@@ -4,7 +4,7 @@ import os
 import re
 import time
 import datetime
-from subprocess import check_call, check_output, STDOUT, CalledProcessError, PIPE, DEVNULL
+from subprocess import check_output, STDOUT, CalledProcessError
 import glob
 import nose
 from flaky import flaky
@@ -30,10 +30,10 @@ def store_results(results_dict):
     total_time = 0
     with open(fn, 'w') as f:
         f.write('Timing results for test run from {}\n\n'.format(dt))
-        for dir in results_dict.keys():
-            f.write('[{}]{}: {} s\n'.format('OK' if results_dict[dir]['worked'] else 'FAILED', dir,
-                                            results_dict[dir]['ts']))
-            total_time += results_dict[dir]['ts']
+        for d in results_dict.keys():
+            f.write('[{}]{}: {} s\n'.format('OK' if results_dict[d]['worked'] else 'FAILED', d,
+                                            results_dict[d]['ts']))
+            total_time += results_dict[d]['ts']
         f.write('total time: {} s\n'.format(total_time))
 
 
@@ -42,7 +42,7 @@ def run_single(folder_name, analysis_name, binary_name):
     config_path = os.path.join(folder_name, analysis_name)
     binary_path= os.path.join(folder_name, binary_name)
     with open(config_path, "r") as config:
-        ret = trace(config, binary_path)
+        trace(config, binary_path)
     ts = time.time() - start
     return ts
 
@@ -51,7 +51,7 @@ def check_single(result_path, folder_name, analysis_name, binary_name):
     status = OK
     ts = run_single(folder_name, analysis_name, binary_name)
     if not os.path.isfile(result_path):
-        logger.error("Error tracing {}. Log-output:".format(analysis_name))
+        logger.error("Error tracing %s. Log-output:", analysis_name)
         #logger.error(output.decode('utf-8'))
         status = ERROR
     msg = "Couldn't find result files: This indicates a problem with the sybmolic execution in angr and means we " \
@@ -67,15 +67,15 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
     binary_path= os.path.join(folder_name, binary_name)
 
     with open(config_path, "r") as config:
-        ret = gen_pocs(config, binary_path, result_name, desc_name, source_name)
+        gen_pocs(config, binary_path, result_name, desc_name, source_name)
 
     poc_path = glob.glob(poc_path)[0]
     try:
         cmd = ['make', '-C', poc_path, 'pocs-print']
-        output = check_output(cmd, stderr=STDOUT)
+        check_output(cmd, stderr=STDOUT)
     except CalledProcessError as e:
         if e.output:
-            logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
+            logger.error("CalledProcessError: Traceback of running %s:", cmd)
             logger.error(e.output.decode('utf-8'))
         status = ERROR
 
@@ -98,7 +98,7 @@ def verify_poc_single(poc_path, poc_type):
                               env={"LD_PRELOAD": "./libc.so.6", "LIBC_FATAL_STDERR_": "1"}, cwd='{}'.format(BASE_DIR),
                               stderr=STDOUT)
     except CalledProcessError as e:
-        logger.error("CalledProcessError: Traceback of running {}:".format(cmd))
+        logger.error("CalledProcessError: Traceback of running %s:", cmd)
         logger.error(e.output.decode('utf-8'))
         status = ERROR
 
@@ -112,7 +112,7 @@ def verify_poc_single(poc_path, poc_type):
     if poc_type == 'malloc_non_heap':
         res = verify_non_heap(output)
         if not res:
-            logger.error("Error running POC {}. output:".format(poc_bin))
+            logger.error("Error running POC %s. output:", poc_bin)
             logger.error(output.decode('utf-8'))
             status = ERROR
         msg = "The concrete execution did not reach the malloc_non_heap state. This is a strong indication for a bug " \
@@ -123,7 +123,7 @@ def verify_poc_single(poc_path, poc_type):
     elif poc_type == 'malloc_allocated':
         res = verify_malloc_allocated(output)
         if not res:
-            logger.error("Error running POC {}. output:".format(poc_bin))
+            logger.error("Error running POC %s. output:", poc_bin)
             logger.error(output.decode('utf-8'))
             status = ERROR
         msg = "The concrete execution did not reach the malloc_allocated state. This is a strong indication for a bug " \
@@ -133,13 +133,16 @@ def verify_poc_single(poc_path, poc_type):
     elif poc_type.startswith('arbitrary_write'):
         res = verify_arbitrary_write(output)
         if not res:
-            logger.error("Error running POC {}. output:".format(poc_bin))
+            logger.error("Error running POC %s. output:", poc_bin)
             logger.error(output.decode('utf-8'))
             status = ERROR
         msg = "The concrete execution did not trigger an arbitrary write. This is a strong indication for a bug in " \
               "the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
         return res
+    else:
+        return True
+
 
 
 def verify_non_heap(output):
@@ -167,7 +170,7 @@ def verify_malloc_allocated(output):
 
 def verify_arbitrary_write(output):
     pre = dict()
-    for (i, a) in re.findall(b"write_target\[([0-9]+)\]: ([0-9a-fx]+|\(nil\))\n", output):
+    for (i, a) in re.findall(br"write_target\[([0-9]+)\]: ([0-9a-fx]+|\(nil\))\n", output):
         if a == b'(nil)':
             a = '0x0'
 
@@ -191,7 +194,6 @@ def test_01_make():
 
 @flaky(max_runs=3, min_passes=1)
 def test_02_fastbin_dup():
-    TIME = 25
     info = dict(folder_name='how2heap_fastbin_dup', conf='analysis.yaml', bin_name='fastbin_dup.bin',
                 type='malloc_non_heap')
     location = str(os.path.join(BASE_DIR, info['folder_name']))
@@ -201,8 +203,7 @@ def test_02_fastbin_dup():
     source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
     poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
-    ts = check_single(result_path, location, info['conf'], info['bin_name'])
-    # nose.tools.assert_less(ts, TIME)
+    check_single(result_path, location, info['conf'], info['bin_name'])
 
     created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path,
                                     poc_path)
@@ -214,7 +215,6 @@ def test_02_fastbin_dup():
 
 @flaky(max_runs=3, min_passes=1)
 def test_03_house_of_lore():
-    TIME = 90
     info = dict(folder_name='how2heap_house_of_lore', conf='analysis.yaml', bin_name='house_of_lore.bin',
                 type='malloc_non_heap')
     location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
@@ -223,8 +223,7 @@ def test_03_house_of_lore():
     source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
     poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
-    ts = check_single(result_path, location, info['conf'], info['bin_name'])
-    # nose.tools.assert_less(ts, TIME)
+    check_single(result_path, location, info['conf'], info['bin_name'])
 
     exists = os.path.isfile(result_path) and os.path.isfile(desc_path)
     nose.tools.assert_true(exists)
@@ -238,7 +237,6 @@ def test_03_house_of_lore():
 
 
 def test_04_house_of_spirit():
-    TIME = 30
     info = dict(folder_name='how2heap_house_of_spirit', conf='analysis.yaml', bin_name='house_of_spirit.bin',
                 type='malloc_non_heap')
     location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
@@ -247,8 +245,7 @@ def test_04_house_of_spirit():
     source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
     poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
-    ts = check_single(result_path, location, info['conf'], info['bin_name'])
-    # nose.tools.assert_less(ts, TIME)
+    check_single(result_path, location, info['conf'], info['bin_name'])
 
     created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path,
                                     poc_path)
@@ -259,7 +256,6 @@ def test_04_house_of_spirit():
 
 
 def test_05_overlapping_chunks():
-    TIME = 30
     info = dict(folder_name='how2heap_overlapping_chunks', conf='analysis.yaml', bin_name='overlapping_chunks.bin',
                 type='malloc_allocated')
     location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
@@ -268,8 +264,7 @@ def test_05_overlapping_chunks():
     source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
     poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 
-    ts = check_single(result_path, location, info['conf'], info['bin_name'])
-    # nose.tools.assert_less(ts, TIME)
+    check_single(result_path, location, info['conf'], info['bin_name'])
 
     created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path,
                                     poc_path)
@@ -280,7 +275,6 @@ def test_05_overlapping_chunks():
 
 
 def test_06_unsorted_bin_attack():
-    TIME = 20
     info = dict(folder_name='how2heap_unsorted_bin_attack', conf='analysis.yaml', bin_name='unsorted_bin_attack.bin',
                 type='arbitrary_write_malloc')
     location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
@@ -289,8 +283,7 @@ def test_06_unsorted_bin_attack():
     source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
     poc_path = '{}/pocs/{}/*/{}'.format(location, info['type'], info['bin_name'])
 
-    ts = check_single(result_path, location, info['conf'], info['bin_name'])
-    # nose.tools.assert_less(ts, TIME)
+    check_single(result_path, location, info['conf'], info['bin_name'])
 
     created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path,
                                     poc_path)
@@ -301,7 +294,6 @@ def test_06_unsorted_bin_attack():
 
 
 # def test_07_unsafe_unlink():
-#        TIME=500
 #        info = dict(folder_name='how2heap_unsafe_unlink', conf='analysis.yaml', bin_name='unsafe_unlink.bin', type='arbitrary_write_free')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
@@ -309,8 +301,7 @@ def test_06_unsorted_bin_attack():
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/*/{}'.format(location, info['type'], info['bin_name'])
 #
-#        ts = check_single(result_path, location, info['conf'], info['bin_name'])
-#        #nose.tools.assert_less(ts, TIME)
+#        check_single(result_path, location, info['conf'], info['bin_name'])
 #
 #        created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
 #        nose.tools.assert_true(created_poc)
@@ -319,7 +310,6 @@ def test_06_unsorted_bin_attack():
 #        nose.tools.assert_true(poc_worked)
 #
 # def test_08_house_of_einherjar():
-#        TIME=500
 #        info = dict(folder_name='how2heap_house_of_einherjar', conf='analysis.yaml', bin_name='house_of_einherjar.bin', type='malloc_non_heap')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
@@ -327,8 +317,7 @@ def test_06_unsorted_bin_attack():
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 #
-#        ts = check_single(result_path, location, info['conf'], info['bin_name'])
-#        #nose.tools.assert_less(ts, TIME)
+#        check_single(result_path, location, info['conf'], info['bin_name'])
 
 #        exists = os.path.isfile(result_path) and os.path.isfile(desc_path)
 #        nose.tools.assert_true(exists)
@@ -342,7 +331,6 @@ def test_06_unsorted_bin_attack():
 # Timeouts on travis
 #@flaky(max_runs=3, min_passes=1)
 #def test_09_poison_null_byte():
-#        TIME=500
 #        info = dict(folder_name='how2heap_poison_null_byte', conf='analysis.yaml', bin_name='poison_null_byte.bin', type='malloc_allocated')
 #        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
 #        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
@@ -350,8 +338,7 @@ def test_06_unsorted_bin_attack():
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
 #
-#        ts = run_single(location, info['conf'], info['bin_name'])
-#        #nose.tools.assert_less(ts, TIME)
+#        run_single(location, info['conf'], info['bin_name'])
 #
 #        exists = os.path.isfile(result_path) and os.path.isfile(desc_path)
 #        nose.tools.assert_true(exists)
