@@ -21,8 +21,8 @@ class MemLimiter(angr.exploration_techniques.ExplorationTechnique):
         simgr.drop(stash='deadended')
         simgr.drop(stash='avoid')
         simgr.drop(stash='found')
-        #if self.drop_errored:
-        #    del simgr.errored[:]
+        if self.drop_errored:
+            del simgr.errored[:]
 
         return simgr.step(stash=stash)
 
