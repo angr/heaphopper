@@ -51,7 +51,7 @@ tests/test_heaphopper.py
 cat tests/how2heap_fastbin_dup/pocs/malloc_non_heap/fastbin_dup.bin/poc_0_0.c
 ## Run PoC
 cd tests
-./run_poc.sh tests/how2heap_fastbin_dup/pocs/malloc_non_heap/fastbin_dup.bin/bin/poc_0_0.bin
+./run_poc.sh how2heap_fastbin_dup/pocs/malloc_non_heap/fastbin_dup.bin/bin/poc_0_0.bin
 ```
 
 # Publication
