@@ -15,5 +15,7 @@ setup(
         'psutil',
         'pyyaml',
         'pyelftools',
+        'nose',
+        'flaky',
    ],
 )

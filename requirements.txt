@@ -6,3 +6,5 @@ angr
 pyyaml
 psutil
 IPython
+nose
+flaky
