@@ -158,7 +158,8 @@ class MallocInspect(SimProcedure):
             self.state.heaphopper.vuln_type = 'malloc_non_heap'
             self.state.heaphopper.vuln_state = self.state.copy()
         elif 'overlap_alloc' in vulns and val not in self.state.heaphopper.double_free:
-            self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size)
+            if self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size):
+                return val
 
         self.state.heaphopper.malloc_dict[dict_key] = (self.state.heaphopper.req_size, addr)
 
@@ -191,17 +192,18 @@ class MallocInspect(SimProcedure):
         # if the ast grows to big, str(addr) is expensive
         logger.info("check_sym_malloc: addr.ast.depth = %d", addr.ast.depth)
         if 'overlap_alloc' in vulns and (addr.ast.depth > 30 or str(addr) not in self.state.heaphopper.double_free):
-            self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size)
+            if self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size):
+                return addr
 
         val = self.state.solver.min(addr)
 
         self.state.heaphopper.malloc_dict[dict_key] = (self.state.heaphopper.req_size, addr)
 
-        # This improves speed significantly, nobody knows why... some magic caching probably
-        size_vals = self.state.solver.eval_upto(self.state.heaphopper.req_size, 16)
-        # Let's use the value for smth. useful, if we solve anyways
-        if len(size_vals) == 1:
-            self.state.add_constraints(self.state.heaphopper.req_size == size_vals[0])
+        ## This improves speed significantly, nobody knows why... some magic caching probably
+        #size_vals = self.state.solver.eval_upto(self.state.heaphopper.req_size, 16)
+        ## Let's use the value for smth. useful, if we solve anyways
+        #if len(size_vals) == 1:
+        #    self.state.add_constraints(self.state.heaphopper.req_size == size_vals[0])
 
         # Remove from free dict if reallocated
         for key in list(self.state.heaphopper.free_dict.keys()):
@@ -223,12 +225,15 @@ class MallocInspect(SimProcedure):
                 self.state.heaphopper.vulnerable = True
                 self.state.heaphopper.vuln_type = 'malloc_allocated'
                 self.state.heaphopper.vuln_state = self.state.copy()
+                return True
             if self.state.solver.satisfiable(extra_constraints=[condition2]):
                 logger.info('Found overlapping allocation')
                 self.state.add_constraints(condition2)
                 self.state.heaphopper.vulnerable = True
                 self.state.heaphopper.vuln_type = 'malloc_allocated'
                 self.state.heaphopper.vuln_state = self.state.copy()
+                return True
+        return False
 
 
 class FreeInspect(SimProcedure):
