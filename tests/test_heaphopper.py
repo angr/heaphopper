@@ -99,8 +99,8 @@ def verify_poc_single(poc_path, poc_type, conf_path):
         status = ERROR
         return false
 
-    libc_path = os.path.abspath(os.path.expanduser(config['libc']))
-    loader_path = os.path.abspath(os.path.expanduser(config['loader']))
+    libc_path = config['libc']
+    loader_path = config['loader']
 
     poc_path = glob.glob(poc_path)[0]
     poc_bin = '{}/bin/poc_0_0.bin'.format(poc_path)
