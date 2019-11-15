@@ -4,6 +4,7 @@ import logging
 import IPython
 import ana
 import math
+import re
 
 import cle
 
@@ -36,12 +37,21 @@ cle issue related workarounds
 '''
 
 
-def fix_loader_problem(proj, state, loader_name):
+def fix_loader_problem(proj, state, loader_name, version):
     loader_bin = proj.loader.shared_objects[loader_name]
     rtld_global = loader_bin.get_symbol('_rtld_global').rebased_addr
+
     # magic_offset = 0x227160
-    magic_offset = 0xef0
-    state.memory.store(rtld_global + 0xf00, loader_bin.mapped_base + magic_offset, endness="Iend_LE")
+    # magic_offset = 0xef0
+
+    if version == '2.27':
+        where = rtld_global + 0xf00
+        magic_offset = 0x10e0
+        what = loader_bin.mapped_base + magic_offset
+    else:
+        raise Exception("Don't know how to fix loader problem for libc-{}".format(version))
+
+    state.memory.store(where, what, endness="Iend_LE")
 
 
 '''
@@ -433,6 +443,8 @@ def trace(config_name, binary_name):
     added_options.add(angr.options.REVERSE_MEMORY_NAME_MAP)
     added_options.add(angr.options.STRICT_PAGE_ACCESS)
     added_options.add(angr.options.CONCRETIZE_SYMBOLIC_FILE_READ_SIZES)
+    added_options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
+    added_options.add(angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS)
     if config['use_vsa']:
         added_options.add(angr.options.APPROXIMATE_SATISFIABILITY)  # vsa for satisfiability
         added_options.add(angr.options.APPROXIMATE_GUARDS)          # vsa for guards
@@ -462,7 +474,8 @@ def trace(config_name, binary_name):
 
     if config['fix_loader_problem']:
         loader_name = os.path.basename(config['loader'])
-        fix_loader_problem(proj, state, loader_name)
+        libc_version = re.findall(r'libc-([\d\.]+)', libc_path)[0]
+        fix_loader_problem(proj, state, loader_name, libc_version)
 
     var_dict = setup_state(state, proj, config)
 

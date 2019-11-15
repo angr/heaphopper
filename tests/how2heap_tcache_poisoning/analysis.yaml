@@ -1,0 +1,53 @@
+# Heap analysis configuration file
+
+# Use global config as base
+global_config: ../analysis.yaml
+
+#############################
+#     zoo-gen settings      #
+#############################
+# Path to shared lib implementing the c-allocator API ("default" for using the libc)
+allocator: ../libc-2.27/libc.so.6
+libc: ../libc-2.27/libc.so.6
+loader: ../libc-2.27/ld-linux-x86-64.so.2
+# Create files ?
+create_files: False
+# Specify the write_target's size in qwords (controlled memory where you want to write to for arb. write)
+wtarget_size: 4
+# Symbolic bytes in sim_data used for fake_free, etc... (default: 0x40)
+sym_data_size: 0x0
+# Specify the number of actions in one zoo case
+zoo_depth: 8
+# Specify the zoo actions out of (malloc, free, overflow, uaf, fake_free, double_free, single_bitflip, arb_relative_write)
+zoo_actions: {malloc: -1, free: -1, uaf: 1}
+# Specify the location to store your zoo
+zoo_dir: /tmp/zoo_dir
+# Enable additional malloc hardening for glibc (disable, enable, pedantic)
+mcheck: disable
+
+
+#############################
+#    analysis settings      #
+#############################
+# Specify the distinct malloc sizes; run identify_libc to identify the libc-binsizes
+malloc_sizes: [0x8]
+# Specify the overflow sizes starting from prev_size
+overflow_sizes: [0]
+# Specify stdin should be pre-constrained
+input_pre_constraint: False
+# Specify stdin value-range (any, ascii, printable, alphanumeric, letters, zero-bytes)
+input_values: any
+# Specify a chunk's header size (not including any user_data overlap)
+header_size: 8
+# Specify the offset between the user's memory and the start of the chunk
+mem2chunk_offset: 16
+# Chunk fill size (number of byte read into each chunk when allocated): zero, header_size, chunk_size, <numeric value in bytes>
+chunk_fill_size: zero
+# Specify vulnerabilities to detect: arbitrary write, allocations over already allocated memory, allocations over non-
+# heap-memory, freeing of fake chunks
+vulns: [bad_alloc]
+
+# Define where to store the proof-of-concept c-files
+pocs_path: pocs
+fix_loader_problem: True
+

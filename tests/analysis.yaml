@@ -9,9 +9,9 @@
 # FD for memory corruptions:
 mem_corruption_fd: 3
 # Path to shared lib implementing the c-allocator API ("default" for using the libc)
-allocator: tests/libc.so.6
-libc: tests/libc.so.6
-loader: ld-linux-x86-64.so.2
+allocator: ./libc-2.23/libc.so.6
+libc: ./libc-2.23/libc.so.6
+loader: ./libc-2.23/ld-linux-x86-64.so.2
 
 
 #############################
