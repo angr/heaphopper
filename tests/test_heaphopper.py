@@ -329,38 +329,38 @@ def test_06_unsorted_bin_attack():
 #        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
 #        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
 #        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
-#
+
 #        check_single(result_path, location, info['conf'], info['bin_name'])
 
 #        exists = os.path.isfile(result_path) and os.path.isfile(desc_path)
 #        nose.tools.assert_true(exists)
-#
+
 #        created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
 #        nose.tools.assert_true(created_poc)
-#
+
 #        poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
 #        nose.tools.assert_true(poc_worked)
 
 # Timeouts on travis
-#@flaky(max_runs=3, min_passes=1)
-#def test_09_poison_null_byte():
-#        info = dict(folder_name='how2heap_poison_null_byte', conf='analysis.yaml', bin_name='poison_null_byte.bin', type='malloc_allocated')
-#        location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
-#        result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
-#        desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
-#        source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
-#        poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
-#
-#        run_single(location, info['conf'], info['bin_name'])
-#
-#        exists = os.path.isfile(result_path) and os.path.isfile(desc_path)
-#        nose.tools.assert_true(exists)
-#
-#        created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
-#        nose.tools.assert_true(created_poc)
-#
-#        poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
-#        nose.tools.assert_true(poc_worked)
+@flaky(max_runs=3, min_passes=1)
+def test_09_poison_null_byte():
+       info = dict(folder_name='how2heap_poison_null_byte', conf='analysis.yaml', bin_name='poison_null_byte.bin', type='malloc_allocated')
+       location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
+       result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
+       desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
+       source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
+       poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+
+       run_single(location, info['conf'], info['bin_name'])
+
+       exists = os.path.isfile(result_path) and os.path.isfile(desc_path)
+       nose.tools.assert_true(exists)
+
+       created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
+       nose.tools.assert_true(created_poc)
+
+       poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
+       nose.tools.assert_true(poc_worked)
 
 def test_10_tcache_poisoning():
     info = dict(folder_name='how2heap_tcache_poisoning', conf='analysis.yaml', bin_name='tcache_poisoning.bin',
