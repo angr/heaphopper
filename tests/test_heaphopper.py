@@ -95,9 +95,9 @@ def verify_poc_single(poc_path, poc_type, conf_path):
         f = open(conf_path, 'r')
         config = parse_config(f)
     except OSError as err:
-        logger.error("OS error: {0}".format(err))
+        logger.error("OS error: %s", err)
         status = ERROR
-        return false
+        return False
 
     libc_path = config['libc']
     loader_path = config['loader']
