@@ -12,6 +12,7 @@ import sys
 import logging
 from heaphopper.analysis.tracer.tracer import trace
 from heaphopper.gen.gen_pocs import gen_pocs
+from heaphopper.utils.parse_config import parse_config
 
 logger = logging.getLogger('heaphopper-test')
 
@@ -87,15 +88,27 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
     return True
 
 
-def verify_poc_single(poc_path, poc_type):
+def verify_poc_single(poc_path, poc_type, conf_path):
     status = OK
+
+    try:
+        f = open(conf_path, 'r')
+        config = parse_config(f)
+    except OSError as err:
+        logger.error("OS error: {0}".format(err))
+        status = ERROR
+        return false
+
+    libc_path = os.path.abspath(os.path.expanduser(config['libc']))
+    loader_path = os.path.abspath(os.path.expanduser(config['loader']))
+
     poc_path = glob.glob(poc_path)[0]
     poc_bin = '{}/bin/poc_0_0.bin'.format(poc_path)
 
     try:
-        cmd = ['./ld-linux-x86-64.so.2', poc_bin]
+        cmd = [loader_path, poc_bin]
         output = check_output(cmd,
-                              env={"LD_PRELOAD": "./libc.so.6", "LIBC_FATAL_STDERR_": "1"}, cwd='{}'.format(BASE_DIR),
+                              env={"LD_PRELOAD": libc_path, "LIBC_FATAL_STDERR_": "1"}, cwd='{}'.format(BASE_DIR),
                               stderr=STDOUT)
     except CalledProcessError as e:
         logger.error("CalledProcessError: Traceback of running %s:", cmd)
@@ -209,7 +222,7 @@ def test_02_fastbin_dup():
                                     poc_path)
     nose.tools.assert_true(created_poc)
 
-    poc_worked = verify_poc_single(poc_path, info['type'])
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
     nose.tools.assert_true(poc_worked)
 
 
@@ -232,7 +245,7 @@ def test_03_house_of_lore():
                                     poc_path)
     nose.tools.assert_true(created_poc)
 
-    poc_worked = verify_poc_single(poc_path, info['type'])
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
     nose.tools.assert_true(poc_worked)
 
 
@@ -251,7 +264,7 @@ def test_04_house_of_spirit():
                                     poc_path)
     nose.tools.assert_true(created_poc)
 
-    poc_worked = verify_poc_single(poc_path, info['type'])
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
     nose.tools.assert_true(poc_worked)
 
 
@@ -270,7 +283,7 @@ def test_05_overlapping_chunks():
                                     poc_path)
     nose.tools.assert_true(created_poc)
 
-    poc_worked = verify_poc_single(poc_path, info['type'])
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
     nose.tools.assert_true(poc_worked)
 
 
@@ -289,7 +302,7 @@ def test_06_unsorted_bin_attack():
                                     poc_path)
     nose.tools.assert_true(created_poc)
 
-    poc_worked = verify_poc_single(poc_path, info['type'])
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
     nose.tools.assert_true(poc_worked)
 
 
@@ -306,7 +319,7 @@ def test_06_unsorted_bin_attack():
 #        created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
 #        nose.tools.assert_true(created_poc)
 #
-#        poc_worked = verify_poc_single(poc_path, info['type'])
+#        poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
 #        nose.tools.assert_true(poc_worked)
 #
 # def test_08_house_of_einherjar():
@@ -325,7 +338,7 @@ def test_06_unsorted_bin_attack():
 #        created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
 #        nose.tools.assert_true(created_poc)
 #
-#        poc_worked = verify_poc_single(poc_path, info['type'])
+#        poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
 #        nose.tools.assert_true(poc_worked)
 
 # Timeouts on travis
@@ -346,9 +359,26 @@ def test_06_unsorted_bin_attack():
 #        created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path, poc_path)
 #        nose.tools.assert_true(created_poc)
 #
-#        poc_worked = verify_poc_single(poc_path, info['type'])
+#        poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
 #        nose.tools.assert_true(poc_worked)
 
+def test_10_tcache_poisoning():
+    info = dict(folder_name='how2heap_tcache_poisoning', conf='analysis.yaml', bin_name='tcache_poisoning.bin',
+                type='malloc_non_heap')
+    location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
+    result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
+    desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
+    source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
+    poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+
+    check_single(result_path, location, info['conf'], info['bin_name'])
+
+    created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path,
+                                    poc_path)
+    nose.tools.assert_true(created_poc)
+
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
+    nose.tools.assert_true(poc_worked)
 
 def run_all():
     functions = globals()
