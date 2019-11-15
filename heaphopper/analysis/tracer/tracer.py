@@ -443,6 +443,8 @@ def trace(config_name, binary_name):
     added_options.add(angr.options.REVERSE_MEMORY_NAME_MAP)
     added_options.add(angr.options.STRICT_PAGE_ACCESS)
     added_options.add(angr.options.CONCRETIZE_SYMBOLIC_FILE_READ_SIZES)
+    added_options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
+    added_options.add(angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS)
     if config['use_vsa']:
         added_options.add(angr.options.APPROXIMATE_SATISFIABILITY)  # vsa for satisfiability
         added_options.add(angr.options.APPROXIMATE_GUARDS)          # vsa for guards
