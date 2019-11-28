@@ -59,7 +59,7 @@ int main(void) {
 	}
 
 	free(ctrl_data_1.global_var);
-	
+
 	// VULN: Overflow
 	offset = mem2chunk_offset;
 	read(3, ((char *) ctrl_data_1.global_var)-offset, overflow_sizes[0]);

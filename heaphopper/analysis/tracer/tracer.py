@@ -24,6 +24,7 @@ from ..concretizer import Concretizer
 from ...utils.angr_tools import heardEnter, all_bytes
 from ...utils.parse_config import parse_config
 from ...utils.input import constrain_input
+from ..heap_hooks import GlibcHook
 
 logger = logging.getLogger('heap-tracer')
 
@@ -32,38 +33,10 @@ DESC_HEADER = 'Vuln description for binary'
 DESC_SECTION_LINE = '=========================================='
 MALLOC_LIST = []
 
-'''
-cle issue related workarounds
-'''
-
-
-def fix_loader_problem(proj, state, loader_name, version):
-    loader_bin = proj.loader.shared_objects[loader_name]
-    rtld_global = loader_bin.get_symbol('_rtld_global').rebased_addr
-
-    # magic_offset = 0x227160
-    # magic_offset = 0xef0
-
-    if version == '2.27':
-        where = rtld_global + 0xf00
-        magic_offset = 0x10e0
-        what = loader_bin.mapped_base + magic_offset
-    else:
-        raise Exception("Don't know how to fix loader problem for libc-{}".format(version))
-
-    state.memory.store(where, what, endness="Iend_LE")
-
 
 '''
 Exploration helper functions
 '''
-
-
-def use_sim_procedure(name):
-    if name in ['puts', 'printf', '__libc_start_main']:
-        return False
-    else:
-        return True
 
 
 def ana_setup():
@@ -250,150 +223,7 @@ def process_state(num_results, state, write_state, var_dict, fd):
     return processed_states
 
 
-'''
-Configure state and fill memory with symbolic variables
-'''
 
-
-def setup_state(state, proj, config):
-
-    # Inject symbolic controlled data into memory
-    var_dict = dict()
-    var_dict['global_vars'] = []
-    var_dict['allocs'] = []
-    for i in range(20):
-        cdata = proj.loader.main_object.get_symbol('ctrl_data_{}'.format(i))
-        # check if ctrl_data exists
-        if not cdata:
-            break
-
-        var_dict['global_vars'].append(cdata.rebased_addr)
-        var_dict['allocs'].append(cdata.rebased_addr)
-
-    # Set mem2chunk offset
-    mem2chunk_var = proj.loader.main_object.get_symbol('mem2chunk_offset')
-    var_dict['mem2chunk_addr'] = mem2chunk_var.rebased_addr
-    mem2chunk = state.solver.BVV(value=config['mem2chunk_offset'], size=8 * 8)
-    state.memory.store(var_dict['mem2chunk_addr'], mem2chunk, 8, endness='Iend_LE')
-
-    # Inject symbolic data into memory that can't be resolved
-    var_dict['sdata_addrs'] = []
-    sdata_var = proj.loader.main_object.get_symbol('sym_data')
-    # check if sym_data exists
-    if sdata_var:
-        for i in range(0, config['sym_data_size'], 8):
-            smem_elem = state.solver.BVS('smem', 8 * 8)
-            state.memory.store(sdata_var.rebased_addr + i, smem_elem, 8, endness='Iend_LE')
-            var_dict['sdata_addrs'].append(sdata_var.rebased_addr + i)
-
-        # create entry in sym_data state storage
-        var_dict['sym_data_ptr'] = sdata_var.rebased_addr + config['mem2chunk_offset']
-        state.heaphopper.sym_data_states[var_dict['sym_data_ptr']] = None
-        # add sym_data_size to heap state
-        state.heaphopper.sym_data_size = config['sym_data_size']
-        # add global_ptr to global_vars:
-        var_dict['global_vars'].append(sdata_var.rebased_addr)
-
-    # Setup write_target
-    var_dict['wtarget_addrs'] = []
-    write_target_var = proj.loader.main_object.get_symbol('write_target')
-    for i in range(0, write_target_var.size, 8):
-        write_mem_elem = state.solver.BVS('write_mem', 8 * 8)
-        state.memory.store(write_target_var.rebased_addr + i, write_mem_elem, 8, endness='Iend_LE')
-        var_dict['wtarget_addrs'].append(write_target_var.rebased_addr + i)
-        var_dict['global_vars'].append(write_target_var.rebased_addr + i)
-
-    # Set header size
-    header_size_var = proj.loader.main_object.get_symbol('header_size')
-    var_dict['header_size_addr'] = header_size_var.rebased_addr
-    header_size = state.solver.BVV(value=config['header_size'], size=8 * 8)
-    state.memory.store(var_dict['header_size_addr'], header_size, 8, endness='Iend_LE')
-
-
-    # Set malloc sizes
-    malloc_size_var = proj.loader.main_object.get_symbol('malloc_sizes')
-    var_dict['malloc_size_addrs'] = [malloc_size_var.rebased_addr + i for i in range(0, malloc_size_var.size, 8)]
-    var_dict['malloc_size_bvs'] = []
-
-    if max(config['malloc_sizes']) != 0:
-        bvs_size = int(math.ceil(math.log(max(config['malloc_sizes']), 2))) + 1
-    else:
-        bvs_size = 8
-    num_bytes = int(math.ceil(bvs_size / float(state.arch.byte_width)))
-    bit_diff = num_bytes * state.arch.byte_width - bvs_size
-
-    for msize in var_dict['malloc_size_addrs']:
-        if len(config['malloc_sizes']) > 1:
-            malloc_var = state.solver.BVS('malloc_size', bvs_size).zero_extend(bit_diff)
-            constraint = claripy.Or(malloc_var == config['malloc_sizes'][0])
-            for bin_size in config['malloc_sizes'][1:]:
-                constraint = claripy.Or(malloc_var == bin_size, constraint)
-            state.add_constraints(constraint)
-        else:
-            malloc_var = state.solver.BVV(config['malloc_sizes'][0], state.arch.bits)
-        var_dict['malloc_size_bvs'].append(malloc_var)
-        state.memory.store(msize, claripy.BVV(0, 8 * 8), endness='Iend_LE')  # zero-fill first just in case
-        state.memory.store(msize, malloc_var, endness='Iend_LE')
-
-    # Set fill sizes
-    fill_size_var = proj.loader.main_object.get_symbol('fill_sizes')
-    var_dict['fill_size_addrs'] = [fill_size_var.rebased_addr + i for i in range(0, fill_size_var.size, 8)]
-    var_dict['fill_size_vars'] = []
-    if config['chunk_fill_size'] == 'zero':
-        var_dict['fill_size_vars'] = [state.solver.BVV(0, 8 * 8)] * len(var_dict['fill_size_addrs'])
-    if config['chunk_fill_size'] == 'header_size':
-        var_dict['fill_size_vars'] = [header_size] * len(var_dict['fill_size_addrs'])
-    if config['chunk_fill_size'] == 'chunk_size':
-        var_dict['fill_size_vars'] = var_dict['malloc_size_bvs']
-    if type(config['chunk_fill_size']) in (int, int):
-        var_dict['fill_size_vars'] = [claripy.BVV(config['chunk_fill_size'], 8 * 8)] * len(var_dict['fill_size_addrs'])
-
-    for fsize, fill_var in zip(var_dict['fill_size_addrs'], var_dict['fill_size_vars']):
-        state.memory.store(fsize, claripy.BVV(0, 8 * 8), endness='Iend_LE')  # zero-fill first just in case
-        state.memory.store(fsize, fill_var, endness='Iend_LE')
-
-    # Set overflow sizes
-    overflow_size_var = proj.loader.main_object.get_symbol('overflow_sizes')
-    overflow_size_offset = overflow_size_var.rebased_addr
-    var_dict['overflow_sizes_addrs'] = [overflow_size_offset + i for i in range(0, overflow_size_var.size, 8)]
-
-    if max(config['overflow_sizes']) != 0:
-        bvs_size = int(math.ceil(math.log(max(config['overflow_sizes']), 2))) + 1
-    else:
-        bvs_size = 8
-    num_bytes = int(math.ceil(bvs_size / float(state.arch.byte_width)))
-    bit_diff = num_bytes * state.arch.byte_width - bvs_size
-
-    var_dict['overflow_sizes'] = []
-    for overflow_size_addr in var_dict['overflow_sizes_addrs']:
-        if len(config['overflow_sizes']) > 1:
-            overflow_var = state.solver.BVS('overflow_size', bvs_size).zero_extend(bit_diff)
-            constraint = claripy.Or(overflow_var == config['overflow_sizes'][0])
-            for bin_size in config['overflow_sizes'][1:]:
-                constraint = claripy.Or(overflow_var == bin_size, constraint)
-            state.add_constraints(constraint)
-        else:
-            overflow_var = state.solver.BVV(config['overflow_sizes'][0], state.arch.bits)
-        var_dict['overflow_sizes'].append(overflow_var)
-
-        state.memory.store(overflow_size_addr, overflow_var, endness='Iend_LE')
-
-    # Get arb_write_offsets
-    var_dict['arb_offset_vars'] = []
-    arb_write_var = proj.loader.main_object.get_symbol('arw_offsets')
-    for i in range(0, arb_write_var.size, 8):
-        var_dict['arb_offset_vars'].append(arb_write_var.rebased_addr + i)
-
-    # Get bf_offsets
-    var_dict['bf_offset_vars'] = []
-    bf_var = proj.loader.main_object.get_symbol('bf_offsets')
-    for i in range(0, bf_var.size, 8):
-        var_dict['bf_offset_vars'].append(bf_var.rebased_addr + i)
-
-    # get winning addr
-    var_dict['winning_addr'] = proj.loader.main_object.get_symbol('winning').rebased_addr
-
-    return var_dict
 
 
 '''
@@ -408,105 +238,21 @@ def trace(config_name, binary_name):
     # Set logging
     logger.info('Searching for vulns')
     logging.basicConfig()
-    # TODO: disable in production
+
     angr.manager.l.setLevel(config['log_level'])
     angr.exploration_techniques.spiller.l.setLevel(config['log_level'])
     cle.loader.l.setLevel(config['log_level'])
     logger.setLevel(config['log_level'])
 
-    # Get libc path
-    libc_path = os.path.expanduser(config['libc'])
-    libc_name = os.path.basename(libc_path)
-    # Get allocator path
-    allocator_path = os.path.expanduser(config['allocator'])
-    if allocator_path == 'default':
-        allocator_path = libc_path
-
-    allocator_name = os.path.basename(allocator_path)
-
-    # Create project and disable sim_procedures for the libc
-    proj = angr.Project(binary_name, exclude_sim_procedures_func=use_sim_procedure,
-                        load_options={'ld_path':[os.path.dirname(allocator_path), os.path.dirname(libc_path)],
-                                              'auto_load_libs':True})
-
-    # Find write_target
-    write_target_var = proj.loader.main_object.get_symbol('write_target')
-
-    # Get libc
-    libc = proj.loader.shared_objects[libc_name]
-
-    # Get allocator
-    allocator = proj.loader.shared_objects[allocator_name]
-
-    # Create state and enable reverse memory map
-    added_options = set()
-    added_options.add(angr.options.REVERSE_MEMORY_NAME_MAP)
-    added_options.add(angr.options.STRICT_PAGE_ACCESS)
-    added_options.add(angr.options.CONCRETIZE_SYMBOLIC_FILE_READ_SIZES)
-    added_options.add(angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY)
-    added_options.add(angr.options.ZERO_FILL_UNCONSTRAINED_REGISTERS)
-
-    added_options.add(angr.options.SIMPLIFY_EXPRS)
-    added_options.update(angr.options.simplification)
-    added_options.update(angr.options.unicorn)
-
-    if config['use_vsa']:
-        added_options.add(angr.options.APPROXIMATE_SATISFIABILITY)  # vsa for satisfiability
-        added_options.add(angr.options.APPROXIMATE_GUARDS)          # vsa for guards
-        added_options.add(angr.options.APPROXIMATE_MEMORY_SIZES)    # vsa for mem_sizes
-        added_options.add(angr.options.APPROXIMATE_MEMORY_INDICES)  # vsa for mem_indices
-
-    removed_options = set()
-    removed_options.add(angr.options.LAZY_SOLVES)
-
-    # set heap location right after bss
-    bss = proj.loader.main_object.sections_map['.bss']
-    heap_base = ((bss.vaddr + bss.memsize) & ~0xfff) + 0x1000
-    heap_size = 64 * 4096
-    new_brk = claripy.BVV(heap_base + heap_size, proj.arch.bits)
-
-
-    heap = SimHeapBrk(heap_base=heap_base, heap_size=heap_size)
-    state = proj.factory.entry_state(add_options=added_options, remove_options=removed_options)
-    state.register_plugin('heap', heap)
-    state.register_plugin('heaphopper', HeapConditionTracker(config=config,
-                                                       wtarget=(write_target_var.rebased_addr,
-                                                                write_target_var.size),
-                                                       libc=libc, allocator=allocator))
-
-    state.posix.set_brk(new_brk)
-    state.heaphopper.set_level(config['log_level'])
-
-    if config['fix_loader_problem']:
-        loader_name = os.path.basename(config['loader'])
-        libc_version = re.findall(r'libc-([\d\.]+)', libc_path)[0]
-        fix_loader_problem(proj, state, loader_name, libc_version)
-
-    var_dict = setup_state(state, proj, config)
-
-    # Set memory concretization strategies
-    state.memory.read_strategies = [
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategySolutions(16),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyControlledData(4096,
-                                                                                                             var_dict[
-                                                                                                                 'global_vars']),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyEval(4096)]
-    state.memory.write_strategies = [
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategySolutions(16),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyControlledData(4096,
-                                                                                                             var_dict[
-                                                                                                                 'global_vars']),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyEval(4096)]
-
-    # Hook malloc and free
-    malloc_addr = allocator.get_symbol('malloc').rebased_addr
-    free_addr = allocator.get_symbol('free').rebased_addr
-    malloc_plt = proj.loader.main_object.plt.get('malloc')
-    free_plt = proj.loader.main_object.plt.get('free')
-    proj.hook(addr=malloc_plt,
-              hook=MallocInspect(malloc_addr=malloc_addr, vulns=config['vulns'], ctrl_data=var_dict['allocs']))
-    proj.hook(addr=free_plt,
-              hook=FreeInspect(free_addr=free_addr, vulns=config['vulns'], sym_data=var_dict['sdata_addrs']))
+    # get heap hook
+    heap_hook_name = config['heap_hook']
+    if heap_hook_name == GlibcHook.name():
+         heap_hook = GlibcHook(binary_name, config)
+    else:
+        raise Exception("Hook {0} not implemented".format(heap_hook_name))
+    proj = heap_hook.proj
+    state = heap_hook.state
+    var_dict = heap_hook.var_dict
 
     found_paths = []
 
@@ -540,8 +286,7 @@ def trace(config_name, binary_name):
         )
         sm.use_technique(spiller)
 
-    avoids = (libc.get_symbol('abort').rebased_addr,)
-    sm.use_technique(angr.exploration_techniques.Explorer(find=(var_dict['winning_addr'],), avoid=avoids))
+    sm.use_technique(angr.exploration_techniques.Explorer(find=heap_hook.finds, avoid=heap_hook.avoids))
 
     # Create fd for memory corruption input
     name = b'memory_corruption'
@@ -606,7 +351,7 @@ def trace(config_name, binary_name):
         path.heaphopper.last_line = last_line
         if path.heaphopper.arb_write_info:
             path.heaphopper.arb_write_info['instr'] = proj.loader.shared_objects[
-                allocator_name].addr_to_offset(
+                heap_hook.allocator_name].addr_to_offset(
                 path.heaphopper.arb_write_info['instr'])
     logger.info('Found {} vulns'.format(len(found_paths)))
 

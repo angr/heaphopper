@@ -77,7 +77,7 @@ int main(void) {
 	//ctrl_data_0.global_var[-1] = 2017;
 
 	free(ctrl_data_0.global_var);
-  
+
 	// Allocation
 	// ctrl_data_4.global_var = malloc(malloc_sizes[4]);
 	ctrl_data_4.global_var = malloc(2000);
