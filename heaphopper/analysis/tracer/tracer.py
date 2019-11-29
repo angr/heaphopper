@@ -132,15 +132,15 @@ def trace(config_name, binary_name):
          heap_hook = GlibcHook(binary_name, config)
     else:
         raise Exception("Hook {0} not implemented".format(heap_hook_name))
-    proj = heap_hook.proj
-    state = heap_hook.state
-    var_dict = heap_hook.var_dict
+    heap_hook.setup_project()
+    heap_hook.setup_state()
+    heap_hook.hook()
 
     found_paths = []
 
     # Configure simgr
     #sm = proj.factory.simgr(thing=state, immutable=False)
-    sm = proj.factory.simgr(thing=state)
+    sm = heap_hook.proj.factory.simgr(thing=heap_hook.state)
 
     sm.use_technique(VulnChecker(config['mem_corruption_fd'], config['input_pre_constraint'], config['input_values'],
                                  config['stop_found'], config['filter_fake_frees']))
@@ -152,7 +152,7 @@ def trace(config_name, binary_name):
     if config['use_veritesting']:
         sm.use_technique(angr.exploration_techniques.Veritesting())
     if config['use_concretizer']:
-        concr_addrs = var_dict['malloc_size_addrs'] + var_dict['allocs']
+        concr_addrs = heap_hook.var_dict['malloc_size_addrs'] + heap_hook.var_dict['allocs']
         sm.use_technique(Concretizer(concr_addrs))
     if config['spiller']:
         if config['dfs']:
@@ -177,9 +177,9 @@ def trace(config_name, binary_name):
     # backing = SimSymbolicMemory(memory_id='file_%s' % name)
     # backing.set_state(state)
     f = SimFile(name, writable=False)
-    f.set_state(state)
-    state.fs.insert(path, f)
-    real_fd = state.posix.open(path, flags=Flags.O_RDONLY, preferred_fd=mem_corr_fd)
+    f.set_state(heap_hook.state)
+    heap_hook.state.fs.insert(path, f)
+    real_fd = heap_hook.state.posix.open(path, flags=Flags.O_RDONLY, preferred_fd=mem_corr_fd)
     if mem_corr_fd != real_fd:
         raise Exception("Overflow fd already exists.")
     #state.posix.fd[mem_corr_fd] = f
@@ -198,14 +198,14 @@ def trace(config_name, binary_name):
             uaf_bytes = 0
 
         if 'arb_relative_write' in config['zoo_actions']:
-            arw_bytes = config['zoo_actions']['arb_relative'] * state.arch.byte_width * 2
+            arw_bytes = config['zoo_actions']['arb_relative'] * heap_hook.state.arch.byte_width * 2
         else:
             arw_bytes = 0
 
         num_bytes = overflow_bytes + uaf_bytes + arw_bytes
-        input_bytes = state.posix.fd[mem_corr_fd].read_data(num_bytes)[0].chop(8)
-        state.posix.fd[mem_corr_fd].seek(0)
-        constrain_input(state, input_bytes, config['input_values'])
+        input_bytes = heap_hook.state.posix.fd[mem_corr_fd].read_data(num_bytes)[0].chop(8)
+        heap_hook.state.posix.fd[mem_corr_fd].seek(0)
+        constrain_input(heap_hook.state, input_bytes, config['input_values'])
 
     # Manual inspection loop
     debug = False
@@ -227,12 +227,12 @@ def trace(config_name, binary_name):
         ana_teardown()
 
     for path in found_paths:
-        win_addr, heap_func = get_win_addr(proj, path.history.bbl_addrs.hardcopy)
+        win_addr, heap_func = get_win_addr(heap_hook.proj, path.history.bbl_addrs.hardcopy)
         path.heaphopper.win_addr = win_addr
         last_line = get_last_line(win_addr, binary_name)
         path.heaphopper.last_line = last_line
         if path.heaphopper.arb_write_info:
-            path.heaphopper.arb_write_info['instr'] = proj.loader.shared_objects[
+            path.heaphopper.arb_write_info['instr'] = heap_hook.proj.loader.shared_objects[
                 heap_hook.allocator_name].addr_to_offset(
                 path.heaphopper.arb_write_info['instr'])
     logger.info('Found {} vulns'.format(len(found_paths)))
@@ -241,7 +241,7 @@ def trace(config_name, binary_name):
         arb_writes = store_results(heap_hook, config['num_results'], binary_name, found_paths,
                                    config['mem_corruption_fd'])
         if config['store_desc']:
-            store_vuln_descs(binary_name, found_paths, var_dict, arb_writes)
+            store_vuln_descs(binary_name, found_paths, heap_hook.var_dict, arb_writes)
     # IPython.embed()
     return 0
 
