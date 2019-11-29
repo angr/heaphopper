@@ -109,124 +109,6 @@ def get_win_addr(proj, addr_trace):
 
 
 '''
-Post processing states
-'''
-
-
-def process_state(num_results, state, write_state, var_dict, fd):
-    processed_states = []
-    input_opts = state.solver.eval_upto(all_bytes(state.posix.fd[fd].read_storage), num_results, cast_to=bytes)
-    for input_opt in input_opts:
-        s = state.copy()
-        write_s = write_state.copy()
-        s.add_constraints(all_bytes(s.posix.fd[fd].read_storage) == input_opt)
-        write_s.add_constraints(all_bytes(write_s.posix.fd[fd].read_storage) == input_opt)
-
-        stdin_bytes = all_bytes(state.posix.fd[0].read_storage)
-        if stdin_bytes:
-            stdin_bytes = [b[0] for b in stdin_bytes]
-            stdin_stream = stdin_bytes[0]
-            for b in stdin_bytes[1:]:
-                stdin_stream = stdin_stream.concat(b)
-            stdin_opt = state.solver.eval(stdin_stream, cast_to=bytes)
-            s.add_constraints(stdin_stream == stdin_opt)
-            write_s.add_constraints(stdin_stream == stdin_opt)
-        else:
-            stdin_opt = []
-
-        svars = []
-        # check if we have a saved-state for the sym_data memory
-        if 'sym_data_ptr' in var_dict and s.heaphopper.sym_data_states[var_dict['sym_data_ptr']]:
-            sym_s = s.heaphopper.sym_data_states[var_dict['sym_data_ptr']].copy()
-            sym_s.add_constraints(all_bytes(sym_s.posix.fd[fd].read_storage) == input_opt)
-            if stdin_opt:
-                sym_s.add_constraints(stdin_stream == stdin_opt)
-        else:
-            sym_s = s
-        for svar in var_dict['sdata_addrs']:
-            smem_orig = sym_s.memory.load(svar, 8, endness='Iend_LE')
-            smem_final = s.memory.load(svar, 8, endness='Iend_LE')
-            # If the symbolic variable was overwritten, use the orig one
-            if smem_orig is not smem_final:
-                sol = sym_s.solver.min(smem_orig)
-                sym_s.add_constraints(smem_orig == sol)
-            else:
-                sol = s.solver.min(smem_final)
-                s.add_constraints(smem_final == sol)
-            svars.append(sol)
-
-        header_var = s.memory.load(var_dict['header_size_addr'], 8, endness="Iend_LE")
-        header = s.solver.min(header_var)
-        s.add_constraints(header_var == header)
-        write_s.add_constraints(header_var == header)
-
-        msizes = []
-        for malloc_size in var_dict['malloc_size_addrs']:
-            size_var = s.memory.load(malloc_size, 8, endness="Iend_LE")
-            sol = s.solver.min(size_var)
-            msizes.append(sol)
-            s.add_constraints(size_var == sol)
-            write_s.add_constraints(size_var == sol)
-
-        fsizes = []
-        for fill_size in var_dict['fill_size_vars']:
-            sol = s.solver.min(fill_size)
-            fsizes.append(sol)
-            s.add_constraints(fill_size == sol)
-            write_s.add_constraints(fill_size == sol)
-
-        osizes = []
-        for overflow_size in var_dict['overflow_sizes']:
-            sol = s.solver.min(overflow_size)
-            osizes.append(sol)
-            s.add_constraints(overflow_size == sol)
-            write_s.add_constraints(overflow_size == sol)
-
-        wt_mem = []
-        for write_target in var_dict['wtarget_addrs']:
-            wt_var = write_s.memory.load(write_target, 8, endness="Iend_LE")
-            sol = write_s.solver.min(wt_var)
-            wt_mem.append(sol)
-            write_s.add_constraints(wt_var == sol)
-
-        allocs = []
-        for allocation in var_dict['allocs']:
-            alloc_var = s.memory.load(allocation, 8, endness="Iend_LE")
-            sol = s.solver.min(alloc_var)
-            allocs.append(sol)
-            s.add_constraints(alloc_var == sol)
-            write_s.add_constraints(alloc_var == sol)
-
-        arb_offsets = []
-        for arb_var in var_dict['arb_offset_vars']:
-            arb_offset = s.memory.load(arb_var, 8, endness="Iend_LE")
-            sol = s.solver.min(arb_offset)
-            arb_offsets.append(sol)
-            s.add_constraints(arb_offset == sol)
-            write_s.add_constraints(arb_offset == sol)
-
-        bf_offsets = []
-        for bf_var in var_dict['bf_offset_vars']:
-            bf_offset = s.memory.load(bf_var, 8, endness="Iend_LE")
-            sol = s.solver.min(bf_offset)
-            bf_offsets.append(sol)
-            s.add_constraints(bf_offset == sol)
-            write_s.add_constraints(bf_offset == sol)
-
-        arb_write = {}
-        if s.heaphopper.arb_write_info:
-            arb_write = {k: s.solver.eval(v) for k, v in list(s.heaphopper.arb_write_info.items())}
-
-        processed_states.append(
-            (input_opt, stdin_opt, svars, header, msizes, fsizes, osizes, wt_mem, allocs, arb_offsets,
-             bf_offsets, arb_write))
-    return processed_states
-
-
-
-
-
-'''
 Main trace function
 '''
 
@@ -356,7 +238,7 @@ def trace(config_name, binary_name):
     logger.info('Found {} vulns'.format(len(found_paths)))
 
     if len(found_paths) > 0:
-        arb_writes = store_results(config['num_results'], binary_name, found_paths, var_dict,
+        arb_writes = store_results(heap_hook, config['num_results'], binary_name, found_paths,
                                    config['mem_corruption_fd'])
         if config['store_desc']:
             store_vuln_descs(binary_name, found_paths, var_dict, arb_writes)
@@ -482,51 +364,15 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
 
 
 # Store results as yaml-file
-def store_results(num_results, bin_file, states, var_dict, fd):
+def store_results(heap_hook, num_results, bin_file, states, fd):
     logger.info('Storing result infos to: {}-result.yaml'.format(bin_file))
     results = []
     arbitrary_writes = []
     for i, state in enumerate(states):
-        result = dict()
-        result['file'] = bin_file
+        result = heap_hook.process_state(num_results, state, state.heaphopper.vuln_state, fd)
         result['path_id'] = i
-        result['input_opts'] = []
-        result['stdin_opts'] = []
-        result['symbolic_data'] = []
-        result['malloc_sizes'] = []
-        result['fill_sizes'] = []
-        result['header_sizes'] = []
-        result['overflow_sizes'] = []
-        result['write_targets'] = []
-        result['mem2chunk_offset'] = state.solver.eval(state.memory.load(var_dict['mem2chunk_addr'], 8,
-                                                                                   endness='Iend_LE'))
-        result['stack_trace'] = state.heaphopper.stack_trace
-        result['last_line'] = state.heaphopper.last_line
-        result['heap_base'] = state.heap.heap_base
-        result['allocs'] = []
-        result['arb_write_offsets'] = []
-        result['bf_offsets'] = []
-        result['vuln_type'] = state.heaphopper.vuln_type
-
-        arbitrary_write = []
-
-        processed_state = process_state(num_results, state, state.heaphopper.vuln_state, var_dict, fd)
-
-        for input_opt, stdin_opt, svars, header, msizes, fsizes, osizes, wtargets, allocs, arb_offsets, bf_offsets, arb_write in processed_state:
-            result['input_opts'].append(input_opt)
-            result['stdin_opts'].append(stdin_opt)
-            result['symbolic_data'].append(svars)
-            result['header_sizes'].append(header)
-            result['malloc_sizes'].append(msizes)
-            result['fill_sizes'].append(fsizes)
-            result['overflow_sizes'].append(osizes)
-            result['write_targets'].append(wtargets)
-            result['allocs'].append(allocs)
-            result['arb_write_offsets'].append(arb_offsets)
-            result['bf_offsets'].append(bf_offsets)
-            arbitrary_write.append(arb_write)
         results.append(result)
-        arbitrary_writes.append(arbitrary_write)
+        arbitrary_writes.append(result['arb_writes'])
 
     with open("{}-result.yaml".format(bin_file), 'w') as f:
         yaml.dump(results, f)
