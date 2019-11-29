@@ -24,7 +24,7 @@ from ..concretizer import Concretizer
 from ...utils.angr_tools import heardEnter, all_bytes
 from ...utils.parse_config import parse_config
 from ...utils.input import constrain_input
-from ..heap_hooks import GlibcHook
+from ..heap_plugins import GlibcPlugin
 
 logger = logging.getLogger('heap-tracer')
 
@@ -126,21 +126,21 @@ def trace(config_name, binary_name):
     cle.loader.l.setLevel(config['log_level'])
     logger.setLevel(config['log_level'])
 
-    # get heap hook
-    heap_hook_name = config['heap_hook']
-    if heap_hook_name == GlibcHook.name():
-         heap_hook = GlibcHook(binary_name, config)
+    # get heap plugin
+    heap_plugin_name = config['heap_plugin']
+    if heap_plugin_name == GlibcPlugin.name():
+         heap_plugin = GlibcPlugin(binary_name, config)
     else:
-        raise Exception("Hook {0} not implemented".format(heap_hook_name))
-    heap_hook.setup_project()
-    heap_hook.setup_state()
-    heap_hook.hook()
+        raise Exception("Hook {0} not implemented".format(heap_plugin_name))
+    heap_plugin.setup_project()
+    heap_plugin.setup_state()
+    heap_plugin.hook()
 
     found_paths = []
 
     # Configure simgr
     #sm = proj.factory.simgr(thing=state, immutable=False)
-    sm = heap_hook.proj.factory.simgr(thing=heap_hook.state)
+    sm = heap_plugin.proj.factory.simgr(thing=heap_plugin.state)
 
     sm.use_technique(VulnChecker(config['mem_corruption_fd'], config['input_pre_constraint'], config['input_values'],
                                  config['stop_found'], config['filter_fake_frees']))
@@ -152,7 +152,7 @@ def trace(config_name, binary_name):
     if config['use_veritesting']:
         sm.use_technique(angr.exploration_techniques.Veritesting())
     if config['use_concretizer']:
-        concr_addrs = heap_hook.var_dict['malloc_size_addrs'] + heap_hook.var_dict['allocs']
+        concr_addrs = heap_plugin.var_dict['malloc_size_addrs'] + heap_plugin.var_dict['allocs']
         sm.use_technique(Concretizer(concr_addrs))
     if config['spiller']:
         if config['dfs']:
@@ -168,7 +168,7 @@ def trace(config_name, binary_name):
         )
         sm.use_technique(spiller)
 
-    sm.use_technique(angr.exploration_techniques.Explorer(find=heap_hook.finds, avoid=heap_hook.avoids))
+    sm.use_technique(angr.exploration_techniques.Explorer(find=heap_plugin.finds, avoid=heap_plugin.avoids))
 
     # Create fd for memory corruption input
     name = b'memory_corruption'
@@ -177,9 +177,9 @@ def trace(config_name, binary_name):
     # backing = SimSymbolicMemory(memory_id='file_%s' % name)
     # backing.set_state(state)
     f = SimFile(name, writable=False)
-    f.set_state(heap_hook.state)
-    heap_hook.state.fs.insert(path, f)
-    real_fd = heap_hook.state.posix.open(path, flags=Flags.O_RDONLY, preferred_fd=mem_corr_fd)
+    f.set_state(heap_plugin.state)
+    heap_plugin.state.fs.insert(path, f)
+    real_fd = heap_plugin.state.posix.open(path, flags=Flags.O_RDONLY, preferred_fd=mem_corr_fd)
     if mem_corr_fd != real_fd:
         raise Exception("Overflow fd already exists.")
     #state.posix.fd[mem_corr_fd] = f
@@ -198,14 +198,14 @@ def trace(config_name, binary_name):
             uaf_bytes = 0
 
         if 'arb_relative_write' in config['zoo_actions']:
-            arw_bytes = config['zoo_actions']['arb_relative'] * heap_hook.state.arch.byte_width * 2
+            arw_bytes = config['zoo_actions']['arb_relative'] * heap_plugin.state.arch.byte_width * 2
         else:
             arw_bytes = 0
 
         num_bytes = overflow_bytes + uaf_bytes + arw_bytes
-        input_bytes = heap_hook.state.posix.fd[mem_corr_fd].read_data(num_bytes)[0].chop(8)
-        heap_hook.state.posix.fd[mem_corr_fd].seek(0)
-        constrain_input(heap_hook.state, input_bytes, config['input_values'])
+        input_bytes = heap_plugin.state.posix.fd[mem_corr_fd].read_data(num_bytes)[0].chop(8)
+        heap_plugin.state.posix.fd[mem_corr_fd].seek(0)
+        constrain_input(heap_plugin.state, input_bytes, config['input_values'])
 
     # Manual inspection loop
     debug = False
@@ -227,21 +227,21 @@ def trace(config_name, binary_name):
         ana_teardown()
 
     for path in found_paths:
-        win_addr, heap_func = get_win_addr(heap_hook.proj, path.history.bbl_addrs.hardcopy)
+        win_addr, heap_func = get_win_addr(heap_plugin.proj, path.history.bbl_addrs.hardcopy)
         path.heaphopper.win_addr = win_addr
         last_line = get_last_line(win_addr, binary_name)
         path.heaphopper.last_line = last_line
         if path.heaphopper.arb_write_info:
-            path.heaphopper.arb_write_info['instr'] = heap_hook.proj.loader.shared_objects[
-                heap_hook.allocator_name].addr_to_offset(
+            path.heaphopper.arb_write_info['instr'] = heap_plugin.proj.loader.shared_objects[
+                heap_plugin.allocator_name].addr_to_offset(
                 path.heaphopper.arb_write_info['instr'])
     logger.info('Found {} vulns'.format(len(found_paths)))
 
     if len(found_paths) > 0:
-        arb_writes = store_results(heap_hook, config['num_results'], binary_name, found_paths,
+        arb_writes = store_results(heap_plugin, config['num_results'], binary_name, found_paths,
                                    config['mem_corruption_fd'])
         if config['store_desc']:
-            store_vuln_descs(binary_name, found_paths, heap_hook.var_dict, arb_writes)
+            store_vuln_descs(binary_name, found_paths, heap_plugin.var_dict, arb_writes)
     # IPython.embed()
     return 0
 
@@ -364,12 +364,12 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
 
 
 # Store results as yaml-file
-def store_results(heap_hook, num_results, bin_file, states, fd):
+def store_results(heap_plugin, num_results, bin_file, states, fd):
     logger.info('Storing result infos to: {}-result.yaml'.format(bin_file))
     results = []
     arbitrary_writes = []
     for i, state in enumerate(states):
-        result = heap_hook.process_state(num_results, state, state.heaphopper.vuln_state, fd)
+        result = heap_plugin.process_state(num_results, state, state.heaphopper.vuln_state, fd)
         result['path_id'] = i
         results.append(result)
         arbitrary_writes.append(result['arb_writes'])

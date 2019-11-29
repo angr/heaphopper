@@ -8,7 +8,7 @@ import claripy
 
 from ..heap_condition_tracker import HeapConditionTracker, MallocInspect, FreeInspect
 from ...utils.angr_tools import all_bytes
-from . import AbstractHeapHook
+from . import AbstractHeapPlugin
 
 def use_sim_procedure(name):
     if name in ['puts', 'printf', '__libc_start_main']:
@@ -16,7 +16,7 @@ def use_sim_procedure(name):
     else:
         return True
 
-class GlibcHook(AbstractHeapHook):
+class GlibcPlugin(AbstractHeapPlugin):
     @classmethod
     def name(self):
         return "glibc"

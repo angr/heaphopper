@@ -1,4 +1,4 @@
-class AbstractHeapHook():
+class AbstractHeapPlugin():
     def __init__(self, binary_name, config):
         self.binary_name = binary_name
         self.config = config
@@ -11,9 +11,18 @@ class AbstractHeapHook():
     def name(self):
         return "Abstract"
 
-    def hook(self, binary_name, config):
-        return None
+    def setup_state(self):
+        pass
+
+    def setup_project(self):
+        pass
+
+    def process_state(self):
+        pass
+
+    def hook(self):
+        pass
 
 
 
-from .glibc import GlibcHook
+from .glibc import GlibcPlugin
