@@ -6,6 +6,10 @@ class AbstractHeapPlugin():
         self.state = None
         self.finds = None
         self.avoids = None
+        # Target for symbolic allocations
+        self.alloc_target_var = None
+        # Target for symbolic writes
+        self.write_target_var = None
 
     @classmethod
     def name(self):
@@ -23,8 +27,8 @@ class AbstractHeapPlugin():
     def hook(self):
         pass
 
-    def post_corruption_analysis(self):
-        return
+    def post_corruption_analysis(self, state):
+        return state
 
 
 

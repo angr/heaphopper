@@ -88,7 +88,7 @@ def create_poc_single(folder_name, analysis_name, binary_name, result_name, desc
     return True
 
 
-def verify_poc_single(poc_path, poc_type, conf_path):
+def verify_poc_single(poc_path, poc_type, conf_path, code_exec=False):
     status = OK
 
     try:
@@ -131,8 +131,6 @@ def verify_poc_single(poc_path, poc_type, conf_path):
         msg = "The concrete execution did not reach the malloc_non_heap state. This is a strong indication for a bug " \
               "in the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
-        return res
-
     elif poc_type == 'malloc_allocated':
         res = verify_malloc_allocated(output)
         if not res:
@@ -142,7 +140,6 @@ def verify_poc_single(poc_path, poc_type, conf_path):
         msg = "The concrete execution did not reach the malloc_allocated state. This is a strong indication for a bug " \
               "in the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
-        return res
     elif poc_type.startswith('arbitrary_write'):
         res = verify_arbitrary_write(output)
         if not res:
@@ -152,10 +149,11 @@ def verify_poc_single(poc_path, poc_type, conf_path):
         msg = "The concrete execution did not trigger an arbitrary write. This is a strong indication for a bug in " \
               "the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
         nose.tools.assert_equal(status, OK, msg)
-        return res
     else:
         return True
-
+    if code_exec:
+        res = verify_code_exec(output)
+    return res
 
 
 def verify_non_heap(output):
@@ -195,6 +193,10 @@ def verify_arbitrary_write(output):
 
     return False
 
+def verify_code_exec(output):
+    if b"BOOMO!" in output:
+        return True
+    return False
 
 def test_01_make():
     output = check_output(['make', '-C', BASE_DIR, 'clean'])
@@ -395,7 +397,7 @@ def test_11_post_corruption_tcache_poisoning():
                                     poc_path)
     nose.tools.assert_true(created_poc)
 
-    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']), code_exec=True)
     nose.tools.assert_true(poc_worked)
 
 def run_all():

@@ -24,7 +24,7 @@ from ..concretizer import Concretizer
 from ...utils.angr_tools import heardEnter, all_bytes
 from ...utils.parse_config import parse_config
 from ...utils.input import constrain_input
-from ..heap_plugins import GlibcPlugin
+from ..heap_plugins import GlibcPlugin, PostCorruptionPlugin
 
 logger = logging.getLogger('heap-tracer')
 
@@ -77,7 +77,7 @@ def decode_file_line(dwarfinfo, address):
     return None, None
 
 
-def get_last_line(win_addr, bin_file):
+def bin_addr2src_line(bin_addr, bin_file):
     with open(bin_file, 'rb') as bf:
         elffile = ELFFile(bf)
 
@@ -89,18 +89,29 @@ def get_last_line(win_addr, bin_file):
         # starting point for all DWARF-based processing in pyelftools.
         dwarfinfo = elffile.get_dwarf_info()
 
-        file_name, line = decode_file_line(dwarfinfo, win_addr)
+        file_name, line = decode_file_line(dwarfinfo, bin_addr)
 
         return line
 
 
-def get_win_addr(proj, addr_trace):
+def get_last_instr(proj, addr_trace):
+    '''
+    Get's last instruction in the main_object
+    '''
     heap_func = None
-    addr_trace = addr_trace[:-1]  # discard last element
+    # check last addr
+    last_addr = addr_trace[-1]
+    if not proj.loader.main_object.contains_addr(last_addr):
+        addr_trace = addr_trace[:-1]  # discard last element
+    else:
+        # We're not in the allocator return here
+        return last_addr
+
+    # Search entrance into the allocator
     for addr in addr_trace[::-1]:
         if proj.loader.main_object.contains_addr(addr):
             if heap_func:
-                return addr, heap_func
+                return addr
             else:  # heap-func in plt first
                 heap_func = proj.loader.main_object.reverse_plt[addr]
         elif heap_func:
@@ -118,18 +129,20 @@ def trace(config_name, binary_name):
     config = parse_config(config_name)
 
     # Set logging
-    logger.info('Searching for vulns')
-    logging.basicConfig()
 
+    logging.basicConfig()
     angr.manager.l.setLevel(config['log_level'])
     angr.exploration_techniques.spiller.l.setLevel(config['log_level'])
     cle.loader.l.setLevel(config['log_level'])
     logger.setLevel(config['log_level'])
 
+    logger.info('Searching for vulns')
     # get heap plugin
     heap_plugin_name = config['heap_plugin']
     if heap_plugin_name == GlibcPlugin.name():
          heap_plugin = GlibcPlugin(binary_name, config)
+    elif heap_plugin_name == PostCorruptionPlugin.name():
+         heap_plugin = PostCorruptionPlugin(binary_name, config)
     else:
         raise Exception("Hook {0} not implemented".format(heap_plugin_name))
     heap_plugin.setup_project()
@@ -220,16 +233,20 @@ def trace(config_name, binary_name):
         if heardEnter():
             debug = True
 
-    sm.move(from_stash='found', to_stash='vuln', filter_func=lambda p: p.heaphopper.vulnerable)
-    found_paths.extend(sm.vuln)
+    sm.move(from_stash='found', to_stash='vuln', filter_func=lambda p: p.heaphopper.vulnerable) 
+    vuln_states = []
+    for s in sm.vuln:
+        new_s = heap_plugin.post_corruption_analysis(s)
+        vuln_states.append(new_s)
+    found_paths.extend(vuln_states)
 
     if config['spiller']:
         ana_teardown()
 
     for path in found_paths:
-        win_addr, heap_func = get_win_addr(heap_plugin.proj, path.history.bbl_addrs.hardcopy)
-        path.heaphopper.win_addr = win_addr
-        last_line = get_last_line(win_addr, binary_name)
+        last_instr_addr = get_last_instr(heap_plugin.proj, path.history.bbl_addrs.hardcopy)
+        path.heaphopper.win_addr = last_instr_addr
+        last_line = bin_addr2src_line(last_instr_addr, binary_name)
         path.heaphopper.last_line = last_line
         if path.heaphopper.arb_write_info:
             path.heaphopper.arb_write_info['instr'] = heap_plugin.proj.loader.shared_objects[
@@ -335,7 +352,6 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
             desc.append('\t- malloc returns a pointer to non-heap segment')
         if state.heaphopper.vuln_type == 'malloc_allocated':
             desc.append('\t- malloc returns a pointer to an already allocated heap region')
-            # IPython.embed()
         if state.heaphopper.stack_trace:
             desc.append('\t- arbitrary write stack_trace:')
             for idx, addr in enumerate(state.heaphopper.stack_trace):

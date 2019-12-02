@@ -19,7 +19,7 @@ typedef struct __attribute__((__packed__)) {
 	func_ptr func;
 } target_struct;
 
-target_struct alloc_target;
+target_struct __attribute__((aligned(16))) alloc_target;
 size_t offset;
 size_t header_size;
 size_t mem2chunk_offset;
@@ -40,7 +40,7 @@ void my_awesome_exit_handler(){
 }
 
 void ops_I_drop_a_shell(){
-	system("/bin/sh");
+	system("echo 'BOOMO!'");
 }
 
 void winning(){
@@ -73,8 +73,6 @@ int main()
 	for (int i=0; i < fill_sizes[2]; i+=8) {
 		read(0, ((uint8_t *)ctrl_data_2.global_var)+i, 8);
 	}
-	
-	read(0, ((uint8_t *)ctrl_data_2.global_var), 8); // MALICIOUS INPUT
 	
 	(*alloc_target.func)();
 	

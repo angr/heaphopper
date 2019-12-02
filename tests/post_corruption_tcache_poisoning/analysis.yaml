@@ -7,6 +7,7 @@ global_config: ../analysis.yaml
 #     zoo-gen settings      #
 #############################
 # Path to shared lib implementing the c-allocator API ("default" for using the libc)
+heap_plugin: 'post_corruption'
 allocator: ../libc-2.27/libc.so.6
 libc: ../libc-2.27/libc.so.6
 loader: ../libc-2.27/ld-linux-x86-64.so.2

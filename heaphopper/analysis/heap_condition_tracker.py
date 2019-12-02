@@ -1,5 +1,5 @@
 from angr import SimProcedure
-from angr.state_plugins import SimStatePlugin, inspect
+from angr.state_plugins import SimStatePlugin, inspect, SimActionObject
 import claripy
 import logging
 
@@ -11,7 +11,7 @@ class HeapConditionTracker(SimStatePlugin):
         pass
 
     def __init__(self, config=None, libc=None, allocator=None, initialized=0, vulnerable=False, vuln_state=None,
-                 vuln_type='', malloc_dict=None, free_dict=None, write_bps=None, wtarget=None,
+                 vuln_type='', malloc_dict=None, free_dict=None, write_bps=None, wtarget=None, atarget=None,
                  req_size=None, arb_write_info=None, double_free=None, fake_frees=None, stack_trace=None,
                  ctrl_data_idx=0, curr_freed_chunk=None, sym_data_states=None, sym_data_size=None, **kwargs):  # pylint:disable=unused-argument
         super(HeapConditionTracker, self).__init__()
@@ -28,6 +28,7 @@ class HeapConditionTracker(SimStatePlugin):
         self.fake_frees = list() if fake_frees is None else list(fake_frees)
         self.write_bps = list() if write_bps is None else list(write_bps)
         self.wtarget = wtarget
+        self.atarget = atarget
         self.req_size = req_size
         self.arb_write_info = dict() if arb_write_info is None else dict(arb_write_info)
         # Stack-trace of arb-write
@@ -176,22 +177,37 @@ class MallocInspect(SimProcedure):
         if self.state.heaphopper.vulnerable:
             return addr
 
+        if type(addr) is SimActionObject:
+            addr = addr.to_claripy()
         # check non-heap:
-        if 'bad_alloc' in vulns and self.state.solver.satisfiable(
-                extra_constraints=[addr < self.state.heap.heap_base]):
-            logger.info('Found allocation on bogus non-heap address')
-            self.state.add_constraints(addr < self.state.heap.heap_base)
-            val = self.state.solver.eval(addr)
-            self.state.add_constraints(addr == val)
-            self.state.heaphopper.vulnerable = True
-            self.state.heaphopper.vuln_type = 'malloc_non_heap'
-            self.state.heaphopper.vuln_state = self.state.copy()
-            return addr
+        if not self.state.heaphopper.atarget:
+            if 'bad_alloc' in vulns and self.state.solver.satisfiable(
+                    extra_constraints=[addr < self.state.heap.heap_base]):
+                logger.info('Found allocation on bogus non-heap address')
+                self.state.add_constraints(addr < self.state.heap.heap_base)
+                val = self.state.solver.eval(addr)
+                self.state.add_constraints(addr == val)
+                self.state.heaphopper.vulnerable = True
+                self.state.heaphopper.vuln_type = 'malloc_non_heap'
+                self.state.heaphopper.vuln_state = self.state.copy()
+                return addr
+        else:
+            constr = claripy.And(addr >= self.state.heaphopper.atarget[0],
+                         addr < self.state.heaphopper.atarget[0] + self.state.heaphopper.atarget[1])
+            if self.state.solver.satisfiable(extra_constraints=[constr]):
+                logger.info('Found allocation on on alloc_target')
+                self.state.add_constraints(constr)
+                val = self.state.solver.eval(addr)
+                self.state.add_constraints(addr == val)
+                self.state.heaphopper.vulnerable = True
+                self.state.heaphopper.vuln_type = 'malloc_non_heap'
+                self.state.heaphopper.vuln_state = self.state.copy()
+                return addr
 
         # check overlaps
         # if the ast grows to big, str(addr) is expensive
-        logger.info("check_sym_malloc: addr.ast.depth = %d", addr.ast.depth)
-        if 'overlap_alloc' in vulns and (addr.ast.depth > 30 or str(addr) not in self.state.heaphopper.double_free):
+        logger.info("check_sym_malloc: addr.depth = %d", addr.depth)
+        if 'overlap_alloc' in vulns and (addr.depth > 30 or str(addr) not in self.state.heaphopper.double_free):
             if self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size):
                 return addr
 

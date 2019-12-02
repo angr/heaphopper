@@ -73,19 +73,35 @@ def check_addr(addr, next_part, prev_part, main_bin, heap_base, allocs, sym, sym
                     expr = '((char *) ctrl_data_{}.global_var) + {}'.format(chunk[0], hex(chunk[1]))
                     next_part = (0, 0x0)
                 return expr, next_part
-        elif 'bss' in section.name:
-            wtarget = main_bin.get_symbol('write_target')
-            offset = actual_addr - wtarget.rebased_addr
-            if shift > 0:
-                expr = '((uint64_t) (((char *) &write_target) + {}) << {}) | {} | {}'.format(hex(offset), shift * 8,
-                                                                                             hex((addr & masks[
-                                                                                                 prev_part[0]]) &
-                                                                                                 masks_prev[shift]),
-                                                                                             prev_part[1])
-                next_part = (shift, next_part & masks[shift])
+        elif '.text' in section.name:
+            s = main_bin.loader.find_symbol(addr)
+            if s:
+                expr = "&{}".format(s.name)
             else:
-                expr = '((char *) &write_target) + {}'.format(hex(offset))
+                main = main_bin.get_symbol('main')
+                offset = main.offset - main_bin.addr_to_offset(addr)
+                expr = "&main {}".format(offset)
+            return expr, (0, 0x0)
+        elif 'bss' in section.name:
+            # check atarget
+            atarget = main_bin.get_symbol('alloc_target')
+            if atarget and actual_addr == atarget.rebased_addr:
+                expr = '&alloc_target'
                 next_part = (0, 0x0)
+            # check wtarget
+            else:
+                wtarget = main_bin.get_symbol('write_target')
+                offset = actual_addr - wtarget.rebased_addr
+                if shift > 0:
+                    expr = '((uint64_t) (((char *) &write_target) + {}) << {}) | {} | {}'.format(hex(offset), shift * 8,
+                                                                                                hex((addr & masks[
+                                                                                                    prev_part[0]]) &
+                                                                                                    masks_prev[shift]),
+                                                                                                prev_part[1])
+                    next_part = (shift, next_part & masks[shift])
+                else:
+                    expr = '((char *) &write_target) + {}'.format(hex(offset))
+                    next_part = (0, 0x0)
             return expr, next_part
         shift += 1
 

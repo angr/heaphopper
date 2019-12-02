@@ -1,6 +1,7 @@
 import os
 import re
 import math
+import logging
 
 import angr
 from angr import SimHeapBrk
@@ -10,6 +11,8 @@ from ..heap_condition_tracker import HeapConditionTracker, MallocInspect, FreeIn
 from ...utils.angr_tools import all_bytes
 from . import AbstractHeapPlugin
 
+logger = logging.getLogger('glibc_plugin')
+
 def use_sim_procedure(name):
     if name in ['puts', 'printf', '__libc_start_main']:
         return False
@@ -17,6 +20,11 @@ def use_sim_procedure(name):
         return True
 
 class GlibcPlugin(AbstractHeapPlugin):
+    def __init__(self, binary_name, config):
+        super().__init__(binary_name, config)
+        logging.basicConfig()
+        logger.setLevel(config['log_level'])
+
     @classmethod
     def name(self):
         return "glibc"
@@ -192,12 +200,11 @@ class GlibcPlugin(AbstractHeapPlugin):
 
         # Setup write_target
         self.var_dict['wtarget_addrs'] = []
-        write_target_var = self.proj.loader.main_object.get_symbol('write_target')
-        for i in range(0, write_target_var.size, 8):
+        for i in range(0, self.write_target_var.size, 8):
             write_mem_elem = self.state.solver.BVS('write_mem', 8 * 8)
-            self.state.memory.store(write_target_var.rebased_addr + i, write_mem_elem, 8, endness='Iend_LE')
-            self.var_dict['wtarget_addrs'].append(write_target_var.rebased_addr + i)
-            self.var_dict['global_vars'].append(write_target_var.rebased_addr + i)
+            self.state.memory.store(self.write_target_var.rebased_addr + i, write_mem_elem, 8, endness='Iend_LE')
+            self.var_dict['wtarget_addrs'].append(self.write_target_var.rebased_addr + i)
+            self.var_dict['global_vars'].append(self.write_target_var.rebased_addr + i)
 
         # Set header size
         header_size_var = self.proj.loader.main_object.get_symbol('header_size')
