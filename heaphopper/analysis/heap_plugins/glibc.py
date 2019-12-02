@@ -61,10 +61,11 @@ class GlibcPlugin(AbstractHeapPlugin):
 
 
 
-    '''
-    cle issue related workarounds
-    '''
+
     def fix_loader_problem(self, proj, state, loader_name, version):
+        '''
+        cle issue related workarounds
+        '''
         loader_bin = proj.loader.shared_objects[loader_name]
         rtld_global = loader_bin.get_symbol('_rtld_global').rebased_addr
 
@@ -80,12 +81,11 @@ class GlibcPlugin(AbstractHeapPlugin):
 
         state.memory.store(where, what, endness="Iend_LE")
 
-    '''
-    Configure state and fill memory with symbolic variables
-    '''
-
 
     def setup_state(self):
+        '''
+        Configure state and fill memory with symbolic variables
+        '''
                 # Create state and enable reverse memory map
         added_options = set()
         added_options.add(angr.options.REVERSE_MEMORY_NAME_MAP)
@@ -291,10 +291,11 @@ class GlibcPlugin(AbstractHeapPlugin):
 
         return self.var_dict
 
-    '''
-    Post processing states
-    '''
+
     def process_state(self, num_results, state, write_state, fd):
+        '''
+        Post processing states
+        '''
         result = dict()
         result['file'] = self.binary_name
         result['input_opts'] = []

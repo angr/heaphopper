@@ -8,6 +8,7 @@ BINS += how2heap_house_of_lore/house_of_lore.bin how2heap_house_of_spirit/house_
 BINS += how2heap_overlapping_chunks/overlapping_chunks.bin how2heap_overlapping_chunks/overlapping_chunks_2.bin
 BINS += how2heap_poison_null_byte/poison_null_byte.bin how2heap_unsafe_unlink/unsafe_unlink.bin
 BINS += how2heap_unsorted_bin_attack/unsorted_bin_attack.bin how2heap_tcache_poisoning/tcache_poisoning.bin
+BINS += post_corruption_tcache_poisoning/tcache_poison_hh.bin
 OBJECTS = $(BINS:.bin=.o)
 SOURCES = $(BINS:.bin=.c)
 RESULTS = $(BINS:.bin=.bin-result.yaml)

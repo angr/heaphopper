@@ -23,6 +23,10 @@ class AbstractHeapPlugin():
     def hook(self):
         pass
 
+    def post_corruption_analysis(self):
+        return
+
 
 
 from .glibc import GlibcPlugin
+from .post_corruption import PostCorruptionPlugin

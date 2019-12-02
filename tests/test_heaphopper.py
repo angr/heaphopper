@@ -380,6 +380,24 @@ def test_10_tcache_poisoning():
     poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
     nose.tools.assert_true(poc_worked)
 
+def test_11_post_corruption_tcache_poisoning():
+    info = dict(folder_name='post_corruption_tcache_poisoning', conf='analysis.yaml', bin_name='tcache_poison_hh.bin',
+                type='malloc_non_heap')
+    location = str(os.path.join(os.path.dirname(os.path.realpath(__file__)), info['folder_name']))
+    result_path = '{}/{}-result.yaml'.format(location, info['bin_name'])
+    desc_path = '{}/{}-desc.yaml'.format(location, info['bin_name'])
+    source_path = '{}/{}.c'.format(location, info['bin_name'].split('.')[0])
+    poc_path = '{}/pocs/{}/{}'.format(location, info['type'], info['bin_name'])
+
+    check_single(result_path, location, info['conf'], info['bin_name'])
+
+    created_poc = create_poc_single(location, info['conf'], info['bin_name'], result_path, desc_path, source_path,
+                                    poc_path)
+    nose.tools.assert_true(created_poc)
+
+    poc_worked = verify_poc_single(poc_path, info['type'], os.path.join(location, info['conf']))
+    nose.tools.assert_true(poc_worked)
+
 def run_all():
     functions = globals()
     all_functions = dict(list(filter((lambda k_v: k_v[0].startswith('test_')), list(functions.items()))))
