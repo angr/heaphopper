@@ -21,13 +21,13 @@ class AbstractHeapPlugin():
     def setup_project(self):
         pass
 
-    def process_state(self):
+    def process_state(self, num_results, state, write_state, fd): # pylint: disable=unused-argument
         pass
 
     def hook(self):
         pass
 
-    def post_corruption_analysis(self, state):
+    def post_corruption_analysis(self, state): # pylint: disable=no-self-use
         return state
 
 

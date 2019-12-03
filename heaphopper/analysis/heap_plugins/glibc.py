@@ -20,6 +20,25 @@ def use_sim_procedure(name):
     else:
         return True
 
+def fix_loader_problem(proj, state, loader_name, version):
+    '''
+    cle issue related workarounds
+    '''
+    loader_bin = proj.loader.shared_objects[loader_name]
+    rtld_global = loader_bin.get_symbol('_rtld_global').rebased_addr
+
+    # magic_offset = 0x227160
+    # magic_offset = 0xef0
+
+    if version == '2.27':
+        where = rtld_global + 0xf00
+        magic_offset = 0x10e0
+        what = loader_bin.mapped_base + magic_offset
+    else:
+        raise Exception(
+            "Don't know how to fix loader problem for libc-{}".format(version))
+
+        state.memory.store(where, what, endness="Iend_LE")
 
 class GlibcPlugin(AbstractHeapPlugin):
     def __init__(self, binary_name, config):
@@ -33,6 +52,8 @@ class GlibcPlugin(AbstractHeapPlugin):
         self.libc_path = None
         self.libc_name = None
         self.var_dict = None
+        self.allocator = None
+        self.libc = None
 
     @classmethod
     def name(cls):
@@ -76,25 +97,7 @@ class GlibcPlugin(AbstractHeapPlugin):
         self.proj.hook(addr=free_plt,
                        hook=FreeInspect(free_addr=free_addr, vulns=self.config['vulns'], sym_data=self.var_dict['sdata_addrs']))
 
-    def fix_loader_problem(self, proj, state, loader_name, version):
-        '''
-        cle issue related workarounds
-        '''
-        loader_bin = proj.loader.shared_objects[loader_name]
-        rtld_global = loader_bin.get_symbol('_rtld_global').rebased_addr
 
-        # magic_offset = 0x227160
-        # magic_offset = 0xef0
-
-        if version == '2.27':
-            where = rtld_global + 0xf00
-            magic_offset = 0x10e0
-            what = loader_bin.mapped_base + magic_offset
-        else:
-            raise Exception(
-                "Don't know how to fix loader problem for libc-{}".format(version))
-
-        state.memory.store(where, what, endness="Iend_LE")
 
     def setup_state(self):
         '''
@@ -146,8 +149,7 @@ class GlibcPlugin(AbstractHeapPlugin):
         if self.config['fix_loader_problem']:
             loader_name = os.path.basename(self.config['loader'])
             libc_version = re.findall(r'libc-([\d\.]+)', self.libc_path)[0]
-            self.fix_loader_problem(
-                self.proj, self.state, loader_name, libc_version)
+            fix_loader_problem(self.proj, self.state, loader_name, libc_version)
 
         self.setup_vars()
 
