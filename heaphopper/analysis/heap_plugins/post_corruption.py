@@ -1,18 +1,14 @@
-import os
-import re
-import math
+
 import IPython
 import logging
 
 import angr
-from angr import SimHeapBrk
-import claripy
 
-from ..heap_condition_tracker import HeapConditionTracker, MallocInspect, FreeInspect
-from ...utils.angr_tools import all_bytes, heardEnter
+from ...utils.angr_tools import heardEnter
 from . import GlibcPlugin
 
 logger = logging.getLogger('post-corruption-analysis')
+
 
 def use_sim_procedure(name):
     if name in ['puts', 'printf', '__libc_start_main']:
@@ -20,34 +16,38 @@ def use_sim_procedure(name):
     else:
         return True
 
+
 class PostCorruptionPlugin(GlibcPlugin):
     def __init__(self, binary_name, config):
         super().__init__(binary_name, config)
         logging.basicConfig()
         logger.setLevel(config['log_level'])
+        self.target_func = None
 
     @classmethod
-    def name(self):
+    def name(cls):
         return "post_corruption"
 
     def setup_project(self):
         super().setup_project()
         # Find alloc_target
-        self.alloc_target_var = self.proj.loader.main_object.get_symbol('alloc_target')
+        self.alloc_target_var = self.proj.loader.main_object.get_symbol(
+            'alloc_target')
 
     def setup_state(self):
         '''
         Configure state and fill memory with symbolic variables
         '''
         super().setup_state()
-        self.state.heaphopper.atarget = (self.alloc_target_var.rebased_addr, self.alloc_target_var.size)
-
+        self.state.heaphopper.atarget = (
+            self.alloc_target_var.rebased_addr, self.alloc_target_var.size)
 
     def setup_vars(self):
         super().setup_vars()
         self.var_dict['global_vars'].append(self.alloc_target_var.rebased_addr)
         # get target_func addr
-        self.target_func = self.proj.loader.main_object.get_symbol(self.config['target_func'])
+        self.target_func = self.proj.loader.main_object.get_symbol(
+            self.config['target_func'])
         self.var_dict['target_func'] = self.target_func.rebased_addr
 
         return self.var_dict
@@ -56,7 +56,8 @@ class PostCorruptionPlugin(GlibcPlugin):
         logger.info("Starting post-corruption analysis")
         logger.info("Checking if target_func is reachable")
         sm = self.proj.factory.simgr(state)
-        sm.use_technique(angr.exploration_techniques.Explorer(find=self.finds, avoid=self.avoids))
+        sm.use_technique(angr.exploration_techniques.Explorer(
+            find=self.finds, avoid=self.avoids))
 
         # Manual inspection loop
         debug = False

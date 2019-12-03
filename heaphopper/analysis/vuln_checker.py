@@ -16,13 +16,15 @@ class VulnChecker(angr.exploration_techniques.ExplorationTechnique):
 
     def step(self, sm, stash, **kwargs):
         # We stop if we find the first vuln
-        sm.move(from_stash='active', to_stash='vuln', filter_func=lambda p: p.heaphopper.vulnerable)
+        sm.move(from_stash='active', to_stash='vuln',
+                filter_func=lambda p: p.heaphopper.vulnerable)
 
         if not self.pre_constraint and len(sm.vuln):
             sm.move(from_stash='vuln', to_stash='unsat_input',
                     filter_func=lambda p: check_input(p, self.stdin_values, self.fd) is None)
             if not len(sm.vuln):
-                logger.info('Vuln path not reachable through stdin constraints')
+                logger.info(
+                    'Vuln path not reachable through stdin constraints')
 
         if self.stop_found and len(sm.vuln):
             sm.move(from_stash='deferred', to_stash='unused')

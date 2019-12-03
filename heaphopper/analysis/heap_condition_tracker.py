@@ -40,18 +40,18 @@ class HeapConditionTracker(SimStatePlugin):
         self.sym_data_states = dict() if sym_data_states is None else dict(sym_data_states)
         self.sym_data_size = sym_data_size
 
-    def set_level(self, level): # pylint:disable=no-self-use
+    def set_level(self, level):  # pylint:disable=no-self-use
         logger.setLevel(level)
 
     @SimStatePlugin.memo
     def copy(self, _memo):
         return HeapConditionTracker(**self.__dict__)
 
-    #def set_state(self, s, **kwargs):
+    # def set_state(self, s, **kwargs):
     #    super(HeapConditionTracker, self).set_state(s, **kwargs)
 
     # we need that for veritesting
-    def merge(self, others, merge_conditions, common_ancestor=None): # pylint:disable=unused-argument
+    def merge(self, others, merge_conditions, common_ancestor=None):  # pylint:disable=unused-argument
         # TODO: Do better merging
         for o in others:
             self.vulnerable |= o.vulnerable
@@ -102,14 +102,14 @@ class MallocInspect(SimProcedure):
     IS_FUNCTION = True
     local_vars = ()
 
-    def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None): # pylint: disable=arguments-differ,unused-argument
+    def run(self, size, malloc_addr=None, vulns=None, ctrl_data=None):  # pylint: disable=arguments-differ,unused-argument
         if 'arb_write' in vulns:
             self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                            action=check_write))
+                                                                        action=check_write))
         self.state.heaphopper.req_size = size
         self.call(malloc_addr, (size,), 'check_malloc')
 
-    def check_malloc(self, size, malloc_addr, vulns=None, ctrl_data=None): #pylint:disable=unused-argument
+    def check_malloc(self, size, malloc_addr, vulns=None, ctrl_data=None):  # pylint:disable=unused-argument
         # Clear breakpoints
         for bp in self.state.heaphopper.write_bps:
             self.state.inspect.remove_breakpoint('mem_write', bp=bp)
@@ -162,11 +162,13 @@ class MallocInspect(SimProcedure):
             if self.check_overlap(self.state.heaphopper.malloc_dict, addr, self.state.heaphopper.req_size):
                 return val
 
-        self.state.heaphopper.malloc_dict[dict_key] = (self.state.heaphopper.req_size, addr)
+        self.state.heaphopper.malloc_dict[dict_key] = (
+            self.state.heaphopper.req_size, addr)
 
         # Remove from free dict if reallocated
         for key in list(self.state.heaphopper.free_dict.keys()):
-            sol = self.state.solver.min(self.state.heaphopper.free_dict[key][1])
+            sol = self.state.solver.min(
+                self.state.heaphopper.free_dict[key][1])
             if val == sol:
                 self.state.heaphopper.free_dict.pop(key)
                 break
@@ -193,7 +195,7 @@ class MallocInspect(SimProcedure):
                 return addr
         else:
             constr = claripy.And(addr >= self.state.heaphopper.atarget[0],
-                         addr < self.state.heaphopper.atarget[0] + self.state.heaphopper.atarget[1])
+                                 addr < self.state.heaphopper.atarget[0] + self.state.heaphopper.atarget[1])
             if self.state.solver.satisfiable(extra_constraints=[constr]):
                 logger.info('Found allocation on on alloc_target')
                 self.state.add_constraints(constr)
@@ -213,17 +215,19 @@ class MallocInspect(SimProcedure):
 
         val = self.state.solver.min(addr)
 
-        self.state.heaphopper.malloc_dict[dict_key] = (self.state.heaphopper.req_size, addr)
+        self.state.heaphopper.malloc_dict[dict_key] = (
+            self.state.heaphopper.req_size, addr)
 
-        ## This improves speed significantly, nobody knows why... some magic caching probably
+        # This improves speed significantly, nobody knows why... some magic caching probably
         #size_vals = self.state.solver.eval_upto(self.state.heaphopper.req_size, 16)
-        ## Let's use the value for smth. useful, if we solve anyways
-        #if len(size_vals) == 1:
+        # Let's use the value for smth. useful, if we solve anyways
+        # if len(size_vals) == 1:
         #    self.state.add_constraints(self.state.heaphopper.req_size == size_vals[0])
 
         # Remove from free dict if reallocated
         for key in list(self.state.heaphopper.free_dict.keys()):
-            sol = self.state.solver.min(self.state.heaphopper.free_dict[key][1])
+            sol = self.state.solver.min(
+                self.state.heaphopper.free_dict[key][1])
             if val == sol:
                 self.state.heaphopper.free_dict.pop(key)
                 break
@@ -233,8 +237,10 @@ class MallocInspect(SimProcedure):
     def check_overlap(self, malloc_dict, addr, req_size):
         for dst in list(malloc_dict.keys()):
             alloc = malloc_dict[dst][1]
-            condition1 = self.state.solver.And(alloc < addr, alloc + malloc_dict[dst][0] > addr)
-            condition2 = self.state.solver.And(alloc > addr, addr + req_size > alloc)
+            condition1 = self.state.solver.And(
+                alloc < addr, alloc + malloc_dict[dst][0] > addr)
+            condition2 = self.state.solver.And(
+                alloc > addr, addr + req_size > alloc)
             if self.state.solver.satisfiable(extra_constraints=[condition1]):
                 logger.info('Found overlapping allocation')
                 self.state.add_constraints(condition1)
@@ -255,36 +261,38 @@ class MallocInspect(SimProcedure):
 class FreeInspect(SimProcedure):
     IS_FUNCTION = True
 
-    def run(self, ptr, free_addr=None, vulns=None, sym_data=None): # pylint: disable=arguments-differ
+    def run(self, ptr, free_addr=None, vulns=None, sym_data=None):  # pylint: disable=arguments-differ
         val = self.state.solver.min(ptr)
         if val in sym_data:
             self.state.heaphopper.fake_frees.append(val)
         else:
             found = False
             for key in list(self.state.heaphopper.malloc_dict.keys()):
-                sol = self.state.solver.min(self.state.heaphopper.malloc_dict[key][1])
+                sol = self.state.solver.min(
+                    self.state.heaphopper.malloc_dict[key][1])
                 if val == sol:
                     minfo = self.state.heaphopper.malloc_dict.pop(key)
                     self.state.heaphopper.free_dict[key] = minfo
                     found = True
             if not found:
                 for key in list(self.state.heaphopper.free_dict.keys()):
-                    sol = self.state.solver.min(self.state.heaphopper.free_dict[key][1])
+                    sol = self.state.solver.min(
+                        self.state.heaphopper.free_dict[key][1])
                     if val == sol:
                         self.state.heaphopper.double_free.append(val)
 
         if 'arb_write' in vulns:
             self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                            action=check_write))
+                                                                        action=check_write))
 
         if val in sym_data:
             self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
-                                                            action=check_sym_data))
+                                                                        action=check_sym_data))
         self.state.heaphopper.curr_freed_chunk = val
 
         self.call(free_addr, [ptr], 'check_free')
 
-    def check_free(self, ptr, free_addr, vulns=None, sym_data=None): #pylint:disable=unused-argument
+    def check_free(self, ptr, free_addr, vulns=None, sym_data=None):  # pylint:disable=unused-argument
         # Clear the chunk currently being freed
         self.state.curr_freed_chunk = None
 
@@ -344,9 +352,11 @@ def check_write(state):
         #logger.debug('check_write: Found arbitrary write')
         state.add_constraints(constr)
         state.heaphopper.vuln_state = state.copy()
-        state.heaphopper.arb_write_info = dict(instr=state.addr, addr=addr, val=val)
+        state.heaphopper.arb_write_info = dict(
+            instr=state.addr, addr=addr, val=val)
         state.heaphopper.vuln_type = 'arbitrary_write'
         state.heaphopper.stack_trace = get_libc_stack_trace(state)
+
 
 def check_sym_data(state):
     # Check if we overwrite a sym_data structure passed to free
@@ -355,12 +365,11 @@ def check_sym_data(state):
     if free_addr in state.heaphopper.sym_data_states and not state.heaphopper.sym_data_states[free_addr]:
         #logger.debug('check_sym_data: curr_freed_chunk: 0x%x' % free_addr)
         #logger.debug('check_sym_data: addr: %s' % addr)
-        constr = claripy.And(addr >= free_addr, addr < free_addr + state.heaphopper.sym_data_size)
+        constr = claripy.And(addr >= free_addr, addr <
+                             free_addr + state.heaphopper.sym_data_size)
         if not state.solver.symbolic(addr) and state.solver.satisfiable(extra_constraints=[constr]):
             #logger.debug('check_sym_data: Saving state')
             state.heaphopper.sym_data_states[free_addr] = state.copy()
-
-
 
 
 def get_libc_stack_trace(state):

@@ -12,7 +12,7 @@ class AbstractHeapPlugin():
         self.write_target_var = None
 
     @classmethod
-    def name(self):
+    def name(cls):
         return "Abstract"
 
     def setup_state(self):
