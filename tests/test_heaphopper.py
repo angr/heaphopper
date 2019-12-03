@@ -154,8 +154,12 @@ def verify_poc_single(poc_path, poc_type, conf_path, code_exec=False):
     if code_exec:
         res = verify_code_exec(output)
         if not res:
-            msg = "The concrete execution did not trigger code execution. This is a strong indication for a bug in " \
-                  "the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
+            logger.error("Error running POC %s. output: ", poc_bin)
+            logger.error.output.decode('utf-8')
+            status = ERROR
+        msg = "The concrete execution did not trigger code execution. This is a strong indication for a bug in " \
+                "the poc-generation and most likely has nothing to do with the symbolic execution in angr. "
+        nose.tools.assert_equal(status, OK, msg)
     return res
 
 
