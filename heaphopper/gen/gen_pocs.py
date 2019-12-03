@@ -543,6 +543,7 @@ def gen_poc(result, src_file, bin_file, last_line):
             poc.append('\t#if print\n\t\tprintf("Overlapping Allocation: %p\\n", {});\n\t#endif\n'.format(ptr))
 
         # end main
+        poc.append("\treturn 0;\n")
         poc.append('}')
         pocs.append('\n'.join(poc))
         poc_descs.append(poc_desc)
