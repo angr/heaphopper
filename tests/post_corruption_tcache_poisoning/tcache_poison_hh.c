@@ -35,16 +35,20 @@ controlled_data __attribute__((aligned(16))) ctrl_data_2;
 
 // Custom functions
 void my_awesome_exit_handler(){
-	fprintf(stderr, "So Long, and Thanks for All the Fish");
+	fprintf(stderr, "So Long, and Thanks for All the Fish\n");
 	exit(0);
 }
 
 void ops_I_drop_a_shell(){
-	system("echo 'BOOMO!'");
+	# if print
+		fprintf(stderr, "BOOMO!\n");
+	# else
+		system("/bin/sh");
+	# endif
 }
 
 void winning(){
-	fprintf(stderr, "Done.");
+	fprintf(stderr, "Done.\n");
 }
 
 int main()

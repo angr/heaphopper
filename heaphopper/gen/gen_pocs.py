@@ -220,7 +220,7 @@ def gen_poc(result, src_file, bin_file, last_line):
             space = ''.join(takewhile(str.isspace, line))
             if 'free(dummy_chunk)' in line:
                 poc.append(line)
-                poc.append('\t# if print\n\t\tprintf("Init printf: %p\\n", dummy_chunk);\n\t# endif\n')
+                poc.append('\t# if print\n\t\tfprintf(stderr, "Init printf: %p\\n", dummy_chunk);\n\t# endif\n')
                 last_action_size += 2
             elif 'free(ctrl_data' in line:
                 poc.append(line)
@@ -231,7 +231,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                     free_list.append(dst)
                     poc_desc['frees'] += 1
                 poc.append(
-                    '{}#if print\n{}\tprintf("Free: %p\\n", ctrl_data_{}.global_var);\n{}#endif\n'.format(space,
+                    '{}#if print\n{}\tfprintf(stderr, "Free: %p\\n", ctrl_data_{}.global_var);\n{}#endif\n'.format(space,
                                                                                                           space,
                                                                                                           dst,
                                                                                                           space))
@@ -246,7 +246,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                                                        line)[0]))
                 poc.append(line)
                 poc.append(
-                    ('{}#if print\n{}\tprintf("Allocation: %p\\nSize: 0x%lx\\n",'
+                    ('{}#if print\n{}\tfprintf(stderr, "Allocation: %p\\nSize: 0x%lx\\n",'
                      'ctrl_data_{}.global_var, malloc_sizes[{}]);\n{}#endif\n').format(
                         space,
                         space,
@@ -532,15 +532,15 @@ def gen_poc(result, src_file, bin_file, last_line):
         poc.insert(-last_action_size, '\n'.join(content))
         poc.insert(-last_action_size, '{}#if print\n{}\tfor (int i = 0; i < 4; i++) {{'.format(space, space))
         poc.insert(-last_action_size,
-                   '{}\t\tprintf("write_target[%d]: %p\\n", i, (void *) write_target[i]);'.format(space))
+                   '{}\t\tfprintf(stderr, "write_target[%d]: %p\\n", i, (void *) write_target[i]);'.format(space))
         poc.insert(-last_action_size, '{}\t}}\n{}#endif\n'.format(space, space))
         poc.append('{}#if print\n{}\tfor (int i = 0; i < 4; i++) {{'.format(space, space))
-        poc.append('{}\t\tprintf("write_target[%d]: %p\\n", i, (void *) write_target[i]);'.format(space))
+        poc.append('{}\t\tfprintf(stderr, "write_target[%d]: %p\\n", i, (void *) write_target[i]);'.format(space))
         poc.append('{}\t}}\n{}#endif\n'.format(space, space))
 
         if result['vuln_type'].startswith('bad_allocation'):
             ptr = poc[-2].split(' ')[0].strip()
-            poc.append('\t#if print\n\t\tprintf("Overlapping Allocation: %p\\n", {});\n\t#endif\n'.format(ptr))
+            poc.append('\t#if print\n\t\tfprintf(stderr, "Overlapping Allocation: %p\\n", {});\n\t#endif\n'.format(ptr))
 
         # end main
         poc.append("\treturn 0;\n")
