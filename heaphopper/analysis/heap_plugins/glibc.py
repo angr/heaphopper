@@ -37,8 +37,7 @@ def fix_loader_problem(proj, state, loader_name, version):
     else:
         raise Exception(
             "Don't know how to fix loader problem for libc-{}".format(version))
-
-        state.memory.store(where, what, endness="Iend_LE")
+    state.memory.store(where, what, endness="Iend_LE")
 
 class GlibcPlugin(AbstractHeapPlugin):
     def __init__(self, binary_name, config):
