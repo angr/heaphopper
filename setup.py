@@ -18,8 +18,6 @@ setup(
     install_requires=[
         'ana',
         'angr',
-        'claripy',
-        'cle',
         'IPython',
         'psutil',
         'pyyaml',
