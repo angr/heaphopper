@@ -18,7 +18,7 @@ loader: ./libc-2.23/ld-linux-x86-64.so.2
 #    analysis settings      #
 #############################
 # Set log_level (DEBUG, INFO, ERROR)
-log_level: INFO
+log_level: WARNING
 store_desc: True
 fix_loader_problem: False
 
