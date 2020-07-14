@@ -4,7 +4,6 @@ import hashlib
 import re
 import subprocess
 import os
-import IPython
 
 from ..heap_condition_tracker import HeapConditionTracker
 from ..mem_limiter import MemLimiter
@@ -91,7 +90,6 @@ def identify_bins(config):
     while len(sm.active) > 0 and not stop:
         if debug:
             debug = False
-            IPython.embed()
 
         sm.step()
         print(sm)

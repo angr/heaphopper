@@ -26,7 +26,7 @@ build-essential python3-dev virtualenvwrapper
 
 #### Required Python-Packages
 ``` bash
-ana angr cle claripy IPython psutil pyelftools pyyaml
+ana angr cle claripy psutil pyelftools pyyaml
 ```
 
 # Examples

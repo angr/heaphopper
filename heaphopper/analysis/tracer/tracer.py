@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import logging
 
-import IPython
 import ana
 import math
 import re
@@ -586,7 +585,6 @@ def trace(config_name, binary_name):
     while len(sm.active) > 0 and not stop:
         if debug:
             debug = False
-            IPython.embed()
 
         sm.step()
 
@@ -615,7 +613,6 @@ def trace(config_name, binary_name):
                                    config['mem_corruption_fd'])
         if config['store_desc']:
             store_vuln_descs(binary_name, found_paths, var_dict, arb_writes)
-    # IPython.embed()
     return 0
 
 
@@ -708,7 +705,6 @@ def store_vuln_descs(desc_file, states, var_dict, arb_writes):
             desc.append('\t- malloc returns a pointer to non-heap segment')
         if state.heaphopper.vuln_type == 'malloc_allocated':
             desc.append('\t- malloc returns a pointer to an already allocated heap region')
-            # IPython.embed()
         if state.heaphopper.stack_trace:
             desc.append('\t- arbitrary write stack_trace:')
             for idx, addr in enumerate(state.heaphopper.stack_trace):

@@ -15,7 +15,6 @@ def heardEnter():
 
 def all_bytes(file):
     if type(file) == SimPacketsStream:
-        # import IPython; IPython.embed()
         return file.content
     indexes = list(file.mem.keys())
     if len(indexes) == 0:

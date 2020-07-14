@@ -18,7 +18,6 @@ setup(
     install_requires=[
         'ana',
         'angr',
-        'IPython',
         'psutil',
         'pyyaml',
         'pyelftools',
