@@ -19,10 +19,6 @@ def all_bytes(file):
     indexes = list(file.mem.keys())
     if len(indexes) == 0:
         return file.state.solver.BVV("")
-    min_idx = min(indexes)
-    max_idx = max(indexes)
-    buff = [ ]
-    for i in range(min_idx, max_idx+1):
-        buff.append(file.load(i, 1))
-    return file.state.solver.Concat(*buff)
+    max_size = file.state.solver.max(file.size)
+    return file.load(0, max_size)
 
