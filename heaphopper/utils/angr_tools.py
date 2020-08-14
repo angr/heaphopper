@@ -16,9 +16,6 @@ def heardEnter():
 def all_bytes(file):
     if type(file) == SimPacketsStream:
         return file.content
-    indexes = list(file.mem.keys())
-    if len(indexes) == 0:
-        return file.state.solver.BVV("")
     max_size = file.state.solver.max(file.size)
     return file.load(0, max_size)
 
