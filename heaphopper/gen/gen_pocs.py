@@ -53,7 +53,7 @@ def check_addr(addr, next_part, prev_part, main_bin, heap_base, allocs, sym, sym
         actual_addr = ((next_part & masks[shift]) << (shift * 8)) | (addr >> (shift * 8))
         section = main_bin.find_section_containing(actual_addr)
         if not section:
-            if 0 <= actual_addr - heap_base < 0x10000:
+            if 0 <= actual_addr - heap_base < 0x80000:
                 offset = actual_addr - allocs[0]
                 chunk = (0, offset)
                 for idx, alloc in enumerate(allocs):
