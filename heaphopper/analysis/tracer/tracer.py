@@ -465,15 +465,18 @@ def trace(config_name, binary_name):
     new_brk = claripy.BVV(heap_base + heap_size, proj.arch.bits)
 
 
-    heap = SimHeapBrk(heap_base=heap_base, heap_size=heap_size)
     state = proj.factory.entry_state(add_options=added_options, remove_options=removed_options)
-    state.register_plugin('heap', heap)
+    # heap = SimHeapBrk(heap_base=heap_base, heap_size=heap_size)
+    #state.register_plugin('heap', heap)
     state.register_plugin('heaphopper', HeapConditionTracker(config=config,
                                                        wtarget=(write_target_var.rebased_addr,
                                                                 write_target_var.size),
                                                        libc=libc, allocator=allocator))
 
-    state.posix.set_brk(new_brk)
+    # state.posix.set_brk(new_brk) # now handled in the heap plugin
+    state.posix.brk = heap_base + heap_size
+    state.heap.heap_base = heap_base
+    state.heap.mmap_base = heap_base + 2*heap_size
     state.heaphopper.set_level(config['log_level'])
 
     if config['fix_loader_problem']:
