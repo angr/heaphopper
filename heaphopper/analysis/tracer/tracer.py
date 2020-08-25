@@ -488,17 +488,17 @@ def trace(config_name, binary_name):
 
     # Set memory concretization strategies
     state.memory.read_strategies = [
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategySolutions(16),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyControlledData(4096,
+        angr.concretization_strategies.SimConcretizationStrategySolutions(16),
+        angr.concretization_strategies.SimConcretizationStrategyControlledData(4096,
                                                                                                              var_dict[
                                                                                                                  'global_vars']),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyEval(4096)]
+        angr.concretization_strategies.SimConcretizationStrategyEval(4096)]
     state.memory.write_strategies = [
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategySolutions(16),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyControlledData(4096,
+        angr.concretization_strategies.SimConcretizationStrategySolutions(16),
+        angr.concretization_strategies.SimConcretizationStrategyControlledData(4096,
                                                                                                              var_dict[
                                                                                                                  'global_vars']),
-        angr.state_plugins.symbolic_memory.concretization_strategies.SimConcretizationStrategyEval(4096)]
+        angr.concretization_strategies.SimConcretizationStrategyEval(4096)]
 
     # Hook malloc and free
     malloc_addr = allocator.get_symbol('malloc').rebased_addr
