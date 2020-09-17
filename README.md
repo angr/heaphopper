@@ -33,14 +33,14 @@ ana angr cle claripy psutil pyelftools pyyaml
 
 ``` bash
 # Gen zoo of permutations
-./heaphopper.py gen -c analysis.yaml
+./heaphopper_client.py gen -c analysis.yaml
 
 #  Trace instance
 make -C tests
-./heaphopper.py  trace -c tests/how2heap_fastbin_dup/analysis.yaml -b tests/how2heap_fastbin_dup/fastbin_dup.bin
+./heaphopper_client.py  trace -c tests/how2heap_fastbin_dup/analysis.yaml -b tests/how2heap_fastbin_dup/fastbin_dup.bin
 
 # Gen PoC
-./heaphopper.py poc -c tests/how2heap_fastbin_dup/analysis.yaml -r tests/how2heap_fastbin_dup/fastbin_dup.bin-result.yaml -d tests/how2heap_fastbin_dup/fastbin_dup.bin-desc.yaml -s tests/how2heap_fastbin_dup/fastbin_dup.c -b tests/how2heap_fastbin_dup/fastbin_dup.bin
+./heaphopper_client.py poc -c tests/how2heap_fastbin_dup/analysis.yaml -r tests/how2heap_fastbin_dup/fastbin_dup.bin-result.yaml -d tests/how2heap_fastbin_dup/fastbin_dup.bin-desc.yaml -s tests/how2heap_fastbin_dup/fastbin_dup.c -b tests/how2heap_fastbin_dup/fastbin_dup.bin
 
 # Tests
 ## Show source
