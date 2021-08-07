@@ -254,6 +254,7 @@ class TestHeapHopper(unittest.TestCase):
 
     def test_unsafe_unlink(self):
         self.do_test("unsafe_unlink", "arbitrary_write_free", poc_star=True)
+    test_unsafe_unlink.speed = "slow"
 
     @unittest.skip("broken")
     def test_house_of_einherjar(self):
