@@ -106,7 +106,7 @@ class MallocInspect(SimProcedure):
             self.state.heaphopper.write_bps.append(self.state.inspect.b('mem_write', when=inspect.BP_BEFORE,
                                                             action=check_write))
         self.state.heaphopper.req_size = size
-        self.call(malloc_addr, (size,), 'check_malloc')
+        self.call(malloc_addr, (size,), 'check_malloc', func_ty='void *malloc(size_t)')
 
     def check_malloc(self, size, malloc_addr, vulns=None, ctrl_data=None): #pylint:disable=unused-argument
         # Clear breakpoints
@@ -266,7 +266,7 @@ class FreeInspect(SimProcedure):
                                                             action=check_sym_data))
         self.state.heaphopper.curr_freed_chunk = val
 
-        self.call(free_addr, [ptr], 'check_free')
+        self.call(free_addr, [ptr], 'check_free', func_ty='void free(void*)')
 
     def check_free(self, ptr, free_addr, vulns=None, sym_data=None): #pylint:disable=unused-argument
         # Clear the chunk currently being freed
