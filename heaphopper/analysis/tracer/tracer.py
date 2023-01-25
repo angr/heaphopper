@@ -410,7 +410,7 @@ def trace(config_name, binary_name):
     # TODO: disable in production
     angr.manager.l.setLevel(config['log_level'])
     angr.exploration_techniques.spiller.l.setLevel(config['log_level'])
-    cle.loader.l.setLevel(config['log_level'])
+    cle.loader.log.setLevel(config['log_level'])
     logger.setLevel(config['log_level'])
 
     # Get libc path
