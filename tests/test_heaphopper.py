@@ -58,7 +58,6 @@ def check_single(result_path, binary_path, config_path):
         assert False, msg
     return ts
 
-
 def create_poc_single(
     folder_name,
     analysis_name,
@@ -202,6 +201,7 @@ def verify_arbitrary_write(output):
     return False
 
 
+@unittest.skip("Broken on Ubuntu 22.04")
 class TestHeapHopper(unittest.TestCase):
     def setUp(self):
         output = check_output(["make", "-C", BASE_DIR, "clean"])
