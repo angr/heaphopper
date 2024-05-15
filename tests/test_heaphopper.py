@@ -105,10 +105,10 @@ def verify_poc_single(poc_path, poc_type, conf_path):
     poc_bin = os.path.join(poc_path, "bin", "poc_0_0.bin")
 
     try:
-        cmd = [loader_path, poc_bin]
+        cmd = [poc_bin]
         output = check_output(
             cmd,
-            env={"LD_PRELOAD": libc_path, "LIBC_FATAL_STDERR_": "1"},
+            env={"LIBC_FATAL_STDERR_": "1"},
             cwd=BASE_DIR,
             stderr=STDOUT,
         )
