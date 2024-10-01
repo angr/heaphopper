@@ -14,7 +14,7 @@ import yaml
 import sys
 from elftools.elf.elffile import ELFFile
 
-from angr.state_plugins import Flags, SimFile
+from angr.storage.file import Flags, SimFile
 from angr import SimHeapBrk
 from ..heap_condition_tracker import HeapConditionTracker, MallocInspect, FreeInspect
 from ..mem_limiter import MemLimiter
