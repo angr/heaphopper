@@ -102,7 +102,7 @@ def check_offset(sym, sym_off, addr, main_bin, allocs):
         return hex(addr), (0, 0x0)
 
     if 'ctrl_data' in sym:
-        alloc_index = int(re.findall('ctrl_data_(\d+)', sym)[0])
+        alloc_index = int(re.findall(r'ctrl_data_(\d+)', sym)[0])
         base = allocs[alloc_index] + sym_off
         sym_prefix = ''
     else:
@@ -208,7 +208,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                 last_action_size += 2
             elif 'free(ctrl_data' in line:
                 poc.append(line)
-                dst = list(map(int, re.findall('ctrl_data_(\d+).global_var', line)))[0]
+                dst = list(map(int, re.findall(r'ctrl_data_(\d+).global_var', line)))[0]
                 if dst in free_list:
                     poc_desc['double_frees'] += 1
                 else:
@@ -226,7 +226,7 @@ def gen_poc(result, src_file, bin_file, last_line):
             elif ' = malloc(malloc_sizes' in line:  # allocation
                 last_action_size += 2
                 poc_desc['allocs'] += 1
-                dst, msize_index = list(map(int, re.findall('ctrl_data_(\d+).global_var = malloc\(malloc_sizes\[(\d+)\]\);',
+                dst, msize_index = list(map(int, re.findall(r'ctrl_data_(\d+).global_var = malloc\(malloc_sizes\[(\d+)\]\);',
                                                        line)[0]))
                 poc.append(line)
                 poc.append(
@@ -245,7 +245,7 @@ def gen_poc(result, src_file, bin_file, last_line):
                     continue
                 if not len(stdin_opt):
                     continue
-                fsize_index = int(re.findall('fill_sizes\[(\d+)\]', for_line)[0])
+                fsize_index = int(re.findall(r'fill_sizes\[(\d+)\]', for_line)[0])
                 prev_part = (0, 0x0)
                 for i in range(0, fsizes[fsize_index], 8):
                     val = b'0x' + binascii.hexlify(stdin_opt[:8][::-1])
