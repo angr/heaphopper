@@ -536,8 +536,8 @@ def gen_poc(result, src_file, bin_file, last_line):
 
 
 def create_makefile(poc_dir, fnames, allocator, libc):
-    alloc_name = re.search('lib([\w]+).so', basename(allocator)).group(1)
-    libc_name = re.search('lib([\w]+).so', basename(libc)).group(1)
+    alloc_name = re.search(r'lib([\w]+).so', basename(allocator)).group(1)
+    libc_name = re.search(r'lib([\w]+).so', basename(libc)).group(1)
     alloc_path = abspath(allocator)
     libc_path = abspath(libc)
 
