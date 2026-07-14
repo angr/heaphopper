@@ -1,6 +1,6 @@
 from angr import SimProcedure
 from angr.state_plugins import SimStatePlugin, inspect
-import claripy
+from angr import claripy
 import logging
 
 logger = logging.getLogger('HeapConditionTracker')

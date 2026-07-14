@@ -8,7 +8,7 @@ import re
 import cle
 
 import angr
-import claripy
+from angr import claripy
 import os
 import yaml
 import sys
